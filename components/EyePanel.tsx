@@ -29,6 +29,9 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">("off");
   const [source, setSource] = useState<"webcam" | "screen" | "call">("webcam");
   const [mode, setMode] = useState<GazeMode>("auto");
+  // Face mesh + iris dots on the preview. Display only: tracking runs the same either way.
+  const [dots, setDots] = useState(true);
+  const showDots = useRef(true);
   const [ui, setUi] = useState<{ off: boolean; offCam: boolean; used: "gaze" | "head"; q: GazeQuality | null; face: boolean }>({ off: false, offCam: false, used: "gaze", q: null, face: false });
   const hotspot = useRef<ReturnType<EyeTracker["liveHotspot"]>>(null);
   const [error, setError] = useState("");
@@ -48,6 +51,14 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
   useEffect(() => {
     if (tracker.current) tracker.current.mode = mode;
   }, [mode]);
+
+  useEffect(() => {
+    try { if (localStorage.getItem("gotcha.eyeDots") === "off") setDots(false); } catch {}
+  }, []);
+  useEffect(() => {
+    showDots.current = dots;
+    try { localStorage.setItem("gotcha.eyeDots", dots ? "on" : "off"); } catch {}
+  }, [dots]);
 
   // Follow the shared call: start when it connects, stop when it goes away
   useEffect(() => {
@@ -114,10 +125,12 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
     const ctx = c.getContext("2d")!;
     ctx.clearRect(0, 0, c.width, c.height);
     if (!lm) return;
-    ctx.fillStyle = "rgba(129,140,248,0.55)";
-    for (let i = 0; i < 468; i += 4) ctx.fillRect(ox + lm[i].x * w, oy + lm[i].y * h, 1.5, 1.5);
-    ctx.fillStyle = "#f43f5e";
-    [468, 473].forEach((i) => { ctx.beginPath(); ctx.arc(ox + lm[i].x * w, oy + lm[i].y * h, 2.5, 0, 7); ctx.fill(); });
+    if (showDots.current) {
+      ctx.fillStyle = "rgba(129,140,248,0.55)";
+      for (let i = 0; i < 468; i += 4) ctx.fillRect(ox + lm[i].x * w, oy + lm[i].y * h, 1.5, 1.5);
+      ctx.fillStyle = "#f43f5e";
+      [468, 473].forEach((i) => { ctx.beginPath(); ctx.arc(ox + lm[i].x * w, oy + lm[i].y * h, 2.5, 0, 7); ctx.fill(); });
+    }
 
     // Gaze dot inside a mini "screen", relative to the candidate's own centre. Drawn in frame
     // coordinates like the mesh, so the CSS mirror flips both together; the box lands top-right.
@@ -170,7 +183,15 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
             Using <b className="text-slate-200">{ui.used === "gaze" ? "eye gaze" : "head pose"}</b>
           </span>
           {q && <span className="tabular-nums">· eye {Math.round(q.eyePx)}px · face {Math.round(q.faceRate * 100)}%</span>}
-          <select className="ml-auto rounded border border-slate-700 bg-slate-950 px-1 py-0.5" value={mode} onChange={(e) => setMode(e.target.value as GazeMode)}>
+          <button
+            className={`ml-auto rounded border px-1.5 py-0.5 ${dots ? "border-slate-500 text-slate-200" : "border-slate-700"} hover:bg-slate-800`}
+            onClick={() => setDots((d) => !d)}
+            aria-pressed={dots}
+            title="Show or hide the face mesh and eye dots. Tracking keeps running either way."
+          >
+            Face dots: {dots ? "on" : "off"}
+          </button>
+          <select className="rounded border border-slate-700 bg-slate-950 px-1 py-0.5" value={mode} onChange={(e) => setMode(e.target.value as GazeMode)}>
             <option value="auto">Auto</option>
             <option value="gaze">Force gaze</option>
             <option value="head">Head pose only</option>
