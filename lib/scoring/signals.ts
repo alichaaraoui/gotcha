@@ -45,7 +45,14 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
   // 1–3 Eyes (from Person 3's tracker)
   if (g) {
     out.push({ method: "eye_reading", value: clamp(g.readingSweeps / 12), why: `${g.readingSweeps.toFixed(0)} left-to-right sweeps/min, looks like reading` });
-    out.push({ method: "eye_offscreen", value: clamp((g.offScreenPct - 0.15) / 0.5 + Math.abs(g.sideBias) * 0.3), why: `Looked away ${(g.offScreenPct * 100).toFixed(0)}% of the answer${Math.abs(g.sideBias) > 0.5 ? `, mostly to the ${g.sideBias > 0 ? "right" : "left"}` : ""}` });
+    // Also: kept going back to the same spot ON the screen, away from the camera (P3: second window, notes, phone)
+    const offScreen = clamp((g.offScreenPct - 0.15) / 0.5 + Math.abs(g.sideBias) * 0.3);
+    const h = g.hotspot;
+    const spot = h && h.visits >= 3 ? clamp((h.visits - 2) / 4 + h.dwellPct) : 0;
+    const where = h ? [h.dy > 0.3 ? "below" : h.dy < -0.3 ? "above" : "", Math.abs(h.dx) > 0.3 ? `to their ${h.dx > 0 ? "right" : "left"}` : ""].filter(Boolean).join(" and ") || "off-camera" : "";
+    out.push(spot > offScreen
+      ? { method: "eye_offscreen", value: spot, why: `Kept looking at the same spot on their screen (${where}), ${h!.visits} times, ${(h!.dwellPct * 100).toFixed(0)}% of the answer` }
+      : { method: "eye_offscreen", value: offScreen, why: `Looked away ${(g.offScreenPct * 100).toFixed(0)}% of the answer${Math.abs(g.sideBias) > 0.5 ? `, mostly to the ${g.sideBias > 0 ? "right" : "left"}` : ""}` });
     out.push({ method: "eye_baseline", value: clamp(g.baselineDelta), why: `Eye pattern ${(g.baselineDelta * 100).toFixed(0)}% different from their warm-up` });
   }
 

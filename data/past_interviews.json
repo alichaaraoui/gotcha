@@ -59,6 +59,53 @@
     ]
   },
   {
+    "id": "past-fe-01",
+    "date": "2026-07-03",
+    "trackId": "frontend-mid",
+    "outcome": "suspicious",
+    "minutesToFirstFlag": 15.6,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w2",
+        "risk": 66
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 64
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 70
+      },
+      {
+        "questionId": "fe-d2",
+        "risk": 74
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 56
+      }
+    ],
+    "flags": [
+      {
+        "method": "llm_style",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "llm_style",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "manual",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "eye_offscreen",
+        "verdict": "suspicious"
+      }
+    ]
+  },
+  {
     "id": "past-02",
     "date": "2026-07-05",
     "trackId": "backend-mid",
@@ -226,6 +273,40 @@
     "flags": []
   },
   {
+    "id": "past-fe-02",
+    "date": "2026-07-13",
+    "trackId": "frontend-mid",
+    "outcome": "genuine",
+    "minutesToFirstFlag": null,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 13
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 16
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 13
+      },
+      {
+        "questionId": "fe-d2",
+        "risk": 28
+      },
+      {
+        "questionId": "fe-p2",
+        "risk": 21
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 21
+      }
+    ],
+    "flags": []
+  },
+  {
     "id": "past-05",
     "date": "2026-07-17",
     "trackId": "backend-mid",
@@ -342,6 +423,57 @@
       },
       {
         "method": "manual",
+        "verdict": "suspicious"
+      }
+    ]
+  },
+  {
+    "id": "past-fe-03",
+    "date": "2026-07-23",
+    "trackId": "frontend-mid",
+    "outcome": "suspicious",
+    "minutesToFirstFlag": 12.4,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 65
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 73
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 60
+      },
+      {
+        "questionId": "fe-c2",
+        "risk": 50
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 57
+      },
+      {
+        "questionId": "fe-p1",
+        "risk": 76
+      },
+      {
+        "questionId": "fe-p2",
+        "risk": 78
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 58
+      }
+    ],
+    "flags": [
+      {
+        "method": "steady_rate",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "eye_baseline",
         "verdict": "suspicious"
       }
     ]
@@ -531,6 +663,44 @@
     ]
   },
   {
+    "id": "past-fe-04",
+    "date": "2026-08-02",
+    "trackId": "frontend-mid",
+    "outcome": "genuine",
+    "minutesToFirstFlag": null,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 19
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 14
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 14
+      },
+      {
+        "questionId": "fe-c2",
+        "risk": 15
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 22
+      },
+      {
+        "questionId": "fe-p1",
+        "risk": 27
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 10
+      }
+    ],
+    "flags": []
+  },
+  {
     "id": "past-10",
     "date": "2026-08-06",
     "trackId": "backend-mid",
@@ -641,6 +811,57 @@
       }
     ],
     "flags": []
+  },
+  {
+    "id": "past-fe-05",
+    "date": "2026-08-12",
+    "trackId": "frontend-mid",
+    "outcome": "suspicious",
+    "minutesToFirstFlag": 9.7,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 49
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 73
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 72
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 72
+      },
+      {
+        "questionId": "fe-d2",
+        "risk": 94
+      },
+      {
+        "questionId": "fe-p1",
+        "risk": 94
+      },
+      {
+        "questionId": "fe-p2",
+        "risk": 90
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 53
+      }
+    ],
+    "flags": [
+      {
+        "method": "eye_baseline",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "eye_reading",
+        "verdict": "suspicious"
+      }
+    ]
   },
   {
     "id": "past-12",
@@ -786,6 +1007,44 @@
     "flags": []
   },
   {
+    "id": "past-fe-06",
+    "date": "2026-08-22",
+    "trackId": "frontend-mid",
+    "outcome": "genuine",
+    "minutesToFirstFlag": null,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 8
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 24
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 19
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 25
+      },
+      {
+        "questionId": "fe-d2",
+        "risk": 11
+      },
+      {
+        "questionId": "fe-p2",
+        "risk": 27
+      },
+      {
+        "questionId": "fe-x1",
+        "risk": 11
+      }
+    ],
+    "flags": []
+  },
+  {
     "id": "past-15",
     "date": "2026-08-26",
     "trackId": "backend-mid",
@@ -914,6 +1173,40 @@
         "verdict": "suspicious"
       }
     ]
+  },
+  {
+    "id": "past-fe-07",
+    "date": "2026-09-01",
+    "trackId": "frontend-mid",
+    "outcome": "genuine",
+    "minutesToFirstFlag": null,
+    "questionsAsked": [
+      {
+        "questionId": "fe-w1",
+        "risk": 17
+      },
+      {
+        "questionId": "fe-w2",
+        "risk": 9
+      },
+      {
+        "questionId": "fe-c1",
+        "risk": 10
+      },
+      {
+        "questionId": "fe-c2",
+        "risk": 25
+      },
+      {
+        "questionId": "fe-d1",
+        "risk": 10
+      },
+      {
+        "questionId": "fe-d2",
+        "risk": 23
+      }
+    ],
+    "flags": []
   },
   {
     "id": "past-17",
@@ -1086,6 +1379,37 @@
       }
     ],
     "flags": []
+  },
+  {
+    "id": "past-fe-08",
+    "date": "2026-09-11",
+    "trackId": "frontend-mid",
+    "outcome": "suspicious",
+    "minutesToFirstFlag": 7.4,
+    "questionsAsked": [
+      {
+        "questionId": "fe-d2",
+        "risk": 79
+      },
+      {
+        "questionId": "fe-p1",
+        "risk": 74
+      }
+    ],
+    "flags": [
+      {
+        "method": "easy_vs_hard",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "latency",
+        "verdict": "suspicious"
+      },
+      {
+        "method": "github_mismatch",
+        "verdict": "suspicious"
+      }
+    ]
   },
   {
     "id": "past-20",

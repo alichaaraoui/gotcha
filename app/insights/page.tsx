@@ -117,7 +117,9 @@ export default function Insights() {
                   <span className="block h-2 rounded-full bg-indigo-300/80" style={{ width: `${(w / 2) * 100}%` }} />
                   <span className="absolute -top-1 h-4 w-px bg-white/70" style={{ left: `${(DEFAULT_WEIGHTS[m] / 2) * 100}%` }} />
                 </span>
-                <span className={`w-20 text-right text-xs ${delta > 0.02 ? "text-emerald-300" : delta < -0.02 ? "text-orange-300" : "text-white/40"}`}>
+                <span className={`w-28 text-right text-xs ${delta > 0.02 ? "text-emerald-300" : delta < -0.02 ? "text-orange-300" : "text-white/40"}`} title={`Started at ${DEFAULT_WEIGHTS[m].toFixed(2)}, now ${w.toFixed(2)}`}>
+                  <span className="tabular-nums text-white/40">{DEFAULT_WEIGHTS[m].toFixed(2)} → {w.toFixed(2)}</span>
+                  <br />
                   {delta > 0.02 ? "trusted more" : delta < -0.02 ? "trusted less" : "unchanged"}
                 </span>
               </div>
@@ -130,7 +132,7 @@ export default function Insights() {
       <section className="card space-y-4">
         <div>
           <h2 className="text-xl font-light">AI answers it already recognizes</h2>
-          <p className="text-sm text-white/50">Confirmed AI-generated answers from past interviews. Cheaters use the same tools, so these come back, and get caught in seconds.</p>
+          <p className="text-sm text-white/50">Confirmed AI-generated answers from past interviews. People who lean on AI tend to use the same tools, so these answers come back, and are spotted in seconds.</p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {knownAi.slice(0, 4).map((k) => (

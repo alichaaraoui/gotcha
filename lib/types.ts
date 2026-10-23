@@ -103,6 +103,16 @@ export interface GazeWindow {
   sideBias: number; // -1 left .. 1 right, sustained same-side glance
   blinkRate: number; // blinks per minute
   baselineDelta: number; // 0..1, how far this is from the warm-up baseline
+  // Added by P3 (optional, additive): looking at the screen but NOT at the camera / the interviewer
+  offCameraPct?: number; // 0..1 of answer time resting on another spot of the screen
+  hotspot?: GazeHotspot | null; // the off-camera spot they kept going back to, if any
+}
+
+export interface GazeHotspot {
+  dx: number; // -1..1 roughly, candidate's right = +; ±1 ≈ edge of the screen
+  dy: number; // + = below where they normally look
+  visits: number; // separate times they went back to it during the answer
+  dwellPct: number; // 0..1 of the answer spent there
 }
 
 // The 11 detection methods
