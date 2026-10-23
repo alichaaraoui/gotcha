@@ -7,6 +7,7 @@ import { ProfileCard } from "@/components/ProfileCard";
 import { BriefCard } from "@/components/BriefCard";
 import { Checklist } from "@/components/Checklist";
 import { LinkedInButton } from "@/components/LinkedInButton";
+import { IdentityCard, IdentityInputs, useIdentity } from "@/components/Identity";
 import type { CandidateProfile, QuestionsResponse } from "@/lib/types";
 
 export default function Setup() {
@@ -18,6 +19,7 @@ export default function Setup() {
   const [error, setError] = useState("");
   const [qSource, setQSource] = useState<string>();
   const p = session.profile;
+  const identity = useIdentity(login);
 
   async function lookup() {
     setLoading(true);
@@ -59,6 +61,7 @@ export default function Setup() {
             <span className="label">LinkedIn URL (optional)</span>
             <input className="input" placeholder="https://www.linkedin.com/in/…" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
           </label>
+          <IdentityInputs id={identity} onDemo={setLogin} />
           <div className="space-y-1.5">
             <span className="label">Line of questioning</span>
             <div className="flex flex-wrap gap-2">
@@ -80,6 +83,7 @@ export default function Setup() {
       <aside className="flex flex-col gap-4">
         {p ? <ProfileCard p={p} /> : <div className="card text-sm text-white/50">The candidate&apos;s GitHub profile shows up here.</div>}
         {p && qSource && <p className="px-2 text-sm text-white/60">✓ {qSource}</p>}
+        <IdentityCard id={identity} onPick={setLogin} />
         {p && <LinkedInButton url={p.linkedinUrl} githubLogin={p.source === "fallback" ? undefined : p.login} />}
         <BriefCard history={history} track={track} />
         {p && <button className="btn-primary mt-auto py-4 text-base" onClick={() => router.push("/live")}>Start interview →</button>}
