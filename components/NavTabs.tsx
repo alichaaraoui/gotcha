@@ -22,10 +22,7 @@ export function NavTabs() {
           {t.label}
         </Link>
       ))}
-      {path === "/report" && (
-        <button onClick={() => window.print()} className="ml-auto rounded-full bg-white px-4 py-1.5 text-xs font-medium text-black">Export PDF ↓</button>
-      )}
-      {path !== "/report" && <span className="ml-auto hidden text-xs text-white/40 lg:inline">Only you can see this screen</span>}
+      <span className="ml-auto hidden text-xs text-white/40 lg:inline">Only you can see this screen</span>
     </nav>
   );
 }

@@ -195,6 +195,8 @@ export interface QuestionsRequest {
   profile: CandidateProfile;
   trackId: string;
   custom?: string; // "Ask your own": generate a shadow answer for this text
+  // "Push for more": write one follow-up from their GitHub + the answer that looked off
+  followUp?: { question: string; answer: string; level: Level; reasons: string[] };
 }
 
 export interface QuestionsResponse {

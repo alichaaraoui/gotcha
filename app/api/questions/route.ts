@@ -27,6 +27,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ personalized: [q], source: g ? "groq" : "fallback" } satisfies QuestionsResponse);
   }
 
+  // "Push for more": one follow-up tailored to their GitHub and to what just sounded off
+  if (body.followUp) {
+    const f = body.followUp;
+    const repoList = profile.repos.slice(0, 6).map((r) => `${r.name} (${r.language ?? "?"}): ${r.description ?? ""}`).join("\n");
+    const g = await groqJson<{ question: string; repoRef: string; topic: string; shadowAnswer: string; goodAnswerHint: string }>(
+      "You help a NON-technical recruiter catch candidates who read AI-generated answers in live interviews. Write ONE short follow-up question (max 30 words, natural to say out loud) that only the real author of their GitHub work could answer: tie it to a SPECIFIC repo by name and to what they just claimed. Prefer asking why they made a choice, what broke, or what they'd change. Also write shadowAnswer: the polished, generic answer ChatGPT would give (50-70 words), and goodAnswerHint: one plain-English sentence on what a genuine answer sounds like. Return JSON {question, repoRef, topic, shadowAnswer, goodAnswerHint}.",
+      `Their repos:\n${repoList}\nTop languages: ${profile.topLanguages.map((l) => l.lang).join(", ")}\n\nQuestion asked: ${f.question}\nTheir answer: ${f.answer}\nWhy it looked off: ${f.reasons.join("; ")}`,
+      6000
+    );
+    const repo = profile.repos[0];
+    const q: Question = g?.question
+      ? { id: `fu-${Date.now()}`, text: g.question, kind: "probe", stage: "probe", probeStyle: "own-code", topic: g.topic || "own-code", repoRef: g.repoRef || repo?.name, shadowAnswer: g.shadowAnswer, goodAnswerHint: g.goodAnswerHint }
+      : {
+          id: `fu-${Date.now()}`,
+          text: repo
+            ? `Let's make that concrete: in ${repo.name}, show me where you actually did that. Which file, and what went wrong the first time?`
+            : "Let's make that concrete: tell me about one specific time you did that, and what went wrong.",
+          kind: "probe",
+          stage: "probe",
+          probeStyle: "own-code",
+          topic: "own-code",
+          repoRef: repo?.name,
+          shadowAnswer: `In ${repo?.name ?? "that project"}, I implemented this in the core module, following best practices for modularity. Initially I faced some challenges with edge cases, which I resolved through thorough testing and refactoring.`,
+          goodAnswerHint: "The real author names a file or function right away and remembers a specific mistake. Vague 'best practices' talk is a warning sign.",
+        };
+    return NextResponse.json({ personalized: [q], source: g ? "groq" : "fallback" } satisfies QuestionsResponse);
+  }
+
   // TODO(P2): tune this prompt; check generated questions sound natural spoken aloud
   const repos = profile.repos.slice(0, 5).map((r) => `${r.name} (${r.language ?? "?"}): ${r.description ?? ""}`).join("\n");
   const g = await groqJson<{ questions: { text: string; topic: string; shadowAnswer: string; goodAnswerHint: string; repoRef: string }[] }>(

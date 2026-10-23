@@ -110,7 +110,33 @@ export default function Live() {
     },
     [questions]
   );
-  const [switched, setSwitched] = useState<{ question: Question; why: string; planId?: string }>();
+  const [switched, setSwitched] = useState<{ question: Question; why: string; planId?: string; writing?: boolean }>();
+  const answeringRef = useRef(answering);
+  answeringRef.current = answering;
+
+  // Push for more: while the recruiter reads the instant pick, write a sharper follow-up from their
+  // GitHub + what they just said, and swap it in if they haven't started asking yet.
+  const writeFollowUp = async (asked: Question, answer: string, score: Score, planId?: string) => {
+    setSwitched((sw) => sw && { ...sw, writing: true });
+    try {
+      const reasons = [...score.signals].sort((a, b) => b.value - a.value).slice(0, 3).map((x) => x.why);
+      const r: QuestionsResponse = await fetch("/api/questions", {
+        method: "POST",
+        body: JSON.stringify({ profile: sessionRef.current.profile, trackId: sessionRef.current.trackId, followUp: { question: asked.text, answer, level: score.level, reasons } }),
+      }).then((x) => x.json());
+      const fu = r.personalized?.[0];
+      if (!fu || answeringRef.current) return setSwitched((sw) => sw && { ...sw, writing: false });
+      store.addQuestions([fu]);
+      setCurrentId(fu.id);
+      setSwitched({
+        question: fu,
+        planId,
+        why: `${score.level === "flag" ? "That answer sounded scripted" : "Something didn't add up"}, so here's a follow-up written from their own GitHub${fu.repoRef ? ` (${fu.repoRef})` : ""}. AI can't fake why they built it that way.`,
+      });
+    } catch {
+      setSwitched((sw) => sw && { ...sw, writing: false });
+    }
+  };
 
   const finish = useCallback(
     async (q: Question, transcript: string, words: WordStamp[], askedAt: number) => {
@@ -137,6 +163,7 @@ export default function Live() {
         setSwitched(sw && { ...sw, planId: next?.id });
         const target = sw?.question ?? next;
         if (target) setCurrentId(target.id);
+        if (sw) writeFollowUp(q, transcript, score, next?.id);
       } finally {
         setAnswering(null);
         setScoring(false);
