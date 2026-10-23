@@ -1,4 +1,5 @@
 // GitHub REST: the ONE live API call. live → write cache → else read cache → else fallback fixture.
+// (Offline, rate-limited (403) or slow (>4s): served from data/cache/, so look candidates up once before the demo.)
 // OWNER: Person 2
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -11,8 +12,12 @@ const headers: Record<string, string> = {
   ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
 };
 
+// GitHub usernames: letters, digits, single hyphens, max 39 chars. Anything else never hits the network
+// or the filesystem (the login becomes a cache filename).
+const VALID_LOGIN = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+
 async function live(login: string): Promise<CandidateProfile> {
-  const opts = { headers, signal: AbortSignal.timeout(5000) };
+  const opts = { headers, signal: AbortSignal.timeout(4000), cache: "no-store" as const };
   const [uRes, rRes, eRes] = await Promise.all([
     fetch(`https://api.github.com/users/${login}`, opts),
     fetch(`https://api.github.com/users/${login}/repos?per_page=100&sort=pushed`, opts),
@@ -51,7 +56,7 @@ async function live(login: string): Promise<CandidateProfile> {
 }
 
 export async function getProfile(login: string): Promise<CandidateProfile> {
-  if (login === fallback.login) return { ...(fallback as CandidateProfile), source: "fallback" };
+  if (login === fallback.login || !VALID_LOGIN.test(login)) return { ...(fallback as CandidateProfile), source: "fallback" };
   const file = join(CACHE_DIR, `github_${login.toLowerCase()}.json`);
   try {
     const p = await live(login);
