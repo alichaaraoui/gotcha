@@ -1,132 +1,196 @@
-// Learning insights. OWNER: Person 3
-// Time-to-first-flag trend, questions ranked by how well they separate, signal weights before → after.
+// What GotCha has learned from past interviews: the headline result first, then the evidence.
+// OWNER: Person 1 + Person 3
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { allQuestions, useStore } from "@/lib/store";
+import { TRACKS, useStore } from "@/lib/store";
 import { DEFAULT_WEIGHTS } from "@/lib/scoring/fuse";
-import { learnWeights, rankQuestions, timeToFlagTrend } from "@/lib/learning";
+import { rankQuestions, timeToFlagTrend } from "@/lib/learning";
 import { METHOD_LABEL } from "@/components/ui";
-import type { MethodId, PastInterview, Weights } from "@/lib/types";
-import seedHistory from "@/data/past_interviews.json";
+import type { MethodId } from "@/lib/types";
 
 export default function Insights() {
-  const { history, weights, track, session } = useStore();
-  const trend = useMemo(() => timeToFlagTrend(history), [history]);
-  const ranked = useMemo(() => rankQuestions(history, track.id).slice(0, 6), [history, track.id]);
-  const allQ = allQuestions(track, session);
-  const saved = history.length - (seedHistory as PastInterview[]).length;
+  const { history, weights, track, knownAi, session } = useStore();
+  const repo = session.profile?.repos[0]?.name ?? "their main project";
+  const allQ = useMemo(() => TRACKS.flatMap((t) => t.stages.flatMap((s) => s.questions)), []);
+  const textOf = (id: string) => (allQ.find((q) => q.id === id)?.text ?? id).replace("{repo}", repo);
 
-  // "Before" = what the weights were before the most recent saved interview (or the seed, if none saved yet).
-  const before = useMemo(() => learnWeights(history.slice(0, -1)), [history]);
-  // Start the bars at "before" and animate to "now" on mount, so a fresh save visibly moves them.
-  const [shown, setShown] = useState<Weights>(before);
-  useEffect(() => {
-    setShown(before);
-    const t = setTimeout(() => setShown(weights), 300);
-    return () => clearTimeout(t);
-  }, [before, weights]);
+  const d = useMemo(() => {
+    const trend = timeToFlagTrend(history);
+    const avg = (xs: { minutes: number }[]) => (xs.length ? xs.reduce((a, b) => a + b.minutes, 0) / xs.length : 0);
+    const before = avg(trend.slice(0, 3));
+    const now = avg(trend.slice(-3));
+    const flags = history.flatMap((h) => h.flags);
+    const confirmed = flags.filter((f) => f.verdict === "suspicious").length;
+    const caught = history.filter((h) => h.outcome === "suspicious").length;
+    const ranked = rankQuestions(history, track.id).slice(0, 6);
+    const weightRows = (Object.keys(weights) as MethodId[])
+      .map((m) => ({ m, w: weights[m], d: weights[m] - DEFAULT_WEIGHTS[m] }))
+      .sort((a, b) => b.w - a.w);
+    return {
+      trend, before, now,
+      faster: before ? Math.round((1 - now / before) * 100) : 0,
+      precision: flags.length ? Math.round((confirmed / flags.length) * 100) : 0,
+      falseFlags: flags.length ? Math.round(((flags.length - confirmed) / flags.length) * 100) : 0,
+      caught, ranked, weightRows,
+      maxSep: Math.max(1, ...ranked.map((r) => r.separation)),
+    };
+  }, [history, weights, track.id]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-semibold">What GotCha has learned</h1>
-        <span className="text-sm text-slate-400">{history.length} past interviews{saved > 0 ? ` (${saved} from you)` : ""}</span>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-8 pb-16">
+      {/* ───────── Headline ───────── */}
+      <section className="stage rounded-[32px] p-8">
+        <div className="label">What GotCha has learned</div>
+        <div className="mt-2 grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
+          <div>
+            <h1 className="text-4xl font-light leading-tight">
+              Spots AI help in <span className="font-normal">{d.now.toFixed(1)} min</span>
+              <span className="text-white/50">, down from {d.before.toFixed(1)}.</span>
+            </h1>
+            <p className="mt-3 max-w-lg text-sm text-white/60">
+              Every interview and every Genuine / Suspicious decision makes the next one sharper: the best questions move up, and the checks that are often wrong count for less.
+            </p>
+          </div>
+          <TrendChart points={d.trend.map((t) => t.minutes)} />
+        </div>
 
-      <TimeToFlag trend={trend} />
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Kpi value={`${history.length}`} label="Past interviews" sub={`${d.caught} AI-assisted caught`} light />
+          <Kpi value={`${d.faster}%`} label="Faster to spot" sub="first 3 vs. latest 3 interviews" />
+          <Kpi value={`${d.precision}%`} label="Flags that were right" sub={`${d.falseFlags}% cleared as genuine by recruiters`} />
+          <Kpi value={`${knownAi.length}`} label="AI answers on file" sub="instant match next time" />
+        </div>
+      </section>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <section className="card space-y-2">
-          <div className="label">Signal weights: default → learned from your verdicts</div>
-          <p className="text-xs text-slate-500">Methods whose flags you confirm as suspicious gain weight; ones you mark genuine lose it.</p>
-          {(Object.keys(weights) as MethodId[]).sort((a, b) => weights[b] - weights[a]).map((m) => {
-            const d = weights[m] - DEFAULT_WEIGHTS[m];
-            const last = weights[m] - before[m];
-            return (
-              <div key={m} className="flex items-center gap-2 text-sm">
-                <span className="w-44 shrink-0 text-slate-300">{METHOD_LABEL[m]}</span>
-                <span className="relative h-2.5 flex-1 rounded bg-slate-800">
-                  {/* default as a tick, learned as the bar */}
-                  <span className="block h-2.5 rounded bg-indigo-400 transition-[width] duration-1000 ease-out" style={{ width: `${(shown[m] / 2) * 100}%` }} />
-                  <span className="absolute -top-0.5 h-3.5 w-0.5 bg-slate-300" style={{ left: `${(DEFAULT_WEIGHTS[m] / 2) * 100}%` }} title={`Default ${DEFAULT_WEIGHTS[m]}`} />
-                </span>
-                <span className="w-24 text-right text-xs tabular-nums text-slate-400">
-                  {DEFAULT_WEIGHTS[m].toFixed(2)} → <b className={d >= 0 ? "text-clear" : "text-warn"}>{weights[m].toFixed(2)}</b>
-                </span>
-                <span className="w-10 text-right text-[10px] tabular-nums text-slate-500" title="Change from your last saved interview">{Math.abs(last) >= 0.005 ? `${last > 0 ? "+" : ""}${last.toFixed(2)}` : ""}</span>
-              </div>
-            );
-          })}
-          <p className="text-[11px] text-slate-500">Bar = learned weight · tick = default · right column = change from the last saved interview.</p>
-        </section>
+      {/* ───────── How it learns ───────── */}
+      <section className="grid gap-3 md:grid-cols-3">
+        {[
+          ["1", "You interview", "GotCha scores every answer with 11 checks and records what happened."],
+          ["2", "You decide", "Marking flags Genuine or Suspicious in the report tells it who was right."],
+          ["3", "It adjusts", "Better questions come first, unreliable checks count less, confirmed AI answers are caught instantly."],
+        ].map(([n, t, s]) => (
+          <div key={n} className="card flex gap-4">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-sm font-medium text-black">{n}</span>
+            <div>
+              <div className="text-[15px]">{t}</div>
+              <p className="mt-1 text-sm text-white/55">{s}</p>
+            </div>
+          </div>
+        ))}
+      </section>
 
-        <section className="card space-y-2">
-          <div className="label">Questions that best separate organic from assisted · {track.name}</div>
-          <p className="text-xs text-slate-500">Gap between average risk for assisted and organic candidates. These go first in the track.</p>
-          {!ranked.length && <p className="text-sm text-slate-500">No history for this track yet.</p>}
-          <ol className="space-y-2 text-sm">
-            {ranked.map((r, i) => {
-              const top = Math.max(1, ranked[0].separation);
-              return (
-                <li key={r.questionId} className="space-y-1">
-                  <div className="flex gap-2"><span className="text-slate-500">{i + 1}.</span><span>{allQ.find((q) => q.id === r.questionId)?.text ?? r.questionId}</span></div>
-                  <div className="flex items-center gap-2 pl-5">
-                    <span className="h-1.5 flex-1 rounded bg-slate-800"><span className="block h-1.5 rounded bg-clear" style={{ width: `${Math.max(0, r.separation / top) * 100}%` }} /></span>
-                    <span className="w-28 text-right text-xs text-slate-500">+{r.separation} pts · asked {r.asked}×</span>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ───────── Best questions ───────── */}
+        <section className="card space-y-4">
+          <div>
+            <h2 className="text-xl font-light">Questions that catch AI fastest</h2>
+            <p className="text-sm text-white/50">{track.name}: how much higher AI-assisted candidates scored than genuine ones. These are asked first.</p>
+          </div>
+          <ol className="space-y-3">
+            {d.ranked.map((r, i) => (
+              <li key={r.questionId} className="flex gap-3">
+                <span className="w-5 shrink-0 text-sm tabular-nums text-white/40">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-snug">{textOf(r.questionId)}</p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <span className="h-1.5 flex-1 rounded-full bg-white/10"><span className="block h-1.5 rounded-full bg-[#f4ca8e]" style={{ width: `${(r.separation / d.maxSep) * 100}%` }} /></span>
+                    <span className="w-24 text-right text-[11px] text-white/45">+{r.separation} pts · asked {r.asked}×</span>
                   </div>
-                </li>
-              );
-            })}
+                </div>
+              </li>
+            ))}
           </ol>
         </section>
+
+        {/* ───────── Check weights ───────── */}
+        <section className="card space-y-4">
+          <div>
+            <h2 className="text-xl font-light">How much it trusts each check</h2>
+            <p className="text-sm text-white/50">Learned from recruiter decisions. The tick marks where each check started.</p>
+          </div>
+          <div className="space-y-2.5">
+            {d.weightRows.map(({ m, w, d: delta }) => (
+              <div key={m} className="flex items-center gap-3 text-sm">
+                <span className="w-40 shrink-0 text-white/80">{METHOD_LABEL[m]}</span>
+                <span className="relative h-2 flex-1 rounded-full bg-white/10">
+                  <span className="block h-2 rounded-full bg-indigo-300/80" style={{ width: `${(w / 2) * 100}%` }} />
+                  <span className="absolute -top-1 h-4 w-px bg-white/70" style={{ left: `${(DEFAULT_WEIGHTS[m] / 2) * 100}%` }} />
+                </span>
+                <span className={`w-28 text-right text-xs ${delta > 0.02 ? "text-emerald-300" : delta < -0.02 ? "text-orange-300" : "text-white/40"}`} title={`Started at ${DEFAULT_WEIGHTS[m].toFixed(2)}, now ${w.toFixed(2)}`}>
+                  <span className="tabular-nums text-white/40">{DEFAULT_WEIGHTS[m].toFixed(2)} → {w.toFixed(2)}</span>
+                  <br />
+                  {delta > 0.02 ? "trusted more" : delta < -0.02 ? "trusted less" : "unchanged"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
-      <Link href="/" className="btn-ghost inline-block">Start the next interview →</Link>
+
+      {/* ───────── AI answer library ───────── */}
+      <section className="card space-y-4">
+        <div>
+          <h2 className="text-xl font-light">AI answers it already recognizes</h2>
+          <p className="text-sm text-white/50">Confirmed AI-generated answers from past interviews. People who lean on AI tend to use the same tools, so these answers come back, and are spotted in seconds.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {knownAi.slice(0, 4).map((k) => (
+            <div key={k.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate text-xs text-white/50">{textOf(k.questionId)}</span>
+                <span className="chip shrink-0">seen {k.seenCount}×</span>
+              </div>
+              <p className="mt-2 line-clamp-3 text-sm italic text-white/75">&ldquo;{k.text}&rdquo;</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="flex justify-between text-sm">
+        <Link href="/report" className="text-white/50 hover:text-white">← Back to the report</Link>
+        <Link href="/" className="text-white/50 hover:text-white">Start a new interview →</Link>
+      </div>
     </div>
   );
 }
 
-function TimeToFlag({ trend }: { trend: { date: string; minutes: number }[] }) {
-  const W = 640, H = 180, P = { l: 32, r: 12, t: 12, b: 24 };
-  if (trend.length < 2) return <section className="card text-sm text-slate-500">Not enough flagged interviews yet to show a trend.</section>;
-  const max = Math.ceil(Math.max(...trend.map((t) => t.minutes)) / 5) * 5;
-  const x = (i: number) => P.l + (i / (trend.length - 1)) * (W - P.l - P.r);
-  const y = (m: number) => P.t + (1 - m / max) * (H - P.t - P.b);
-  // Least-squares trend line
-  const n = trend.length, xs = trend.map((_, i) => i), ys = trend.map((t) => t.minutes);
-  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
-  const slope = xs.reduce((a, xi, i) => a + (xi - mx) * (ys[i] - my), 0) / Math.max(1e-9, xs.reduce((a, xi) => a + (xi - mx) ** 2, 0));
-  const fit = (i: number) => my + slope * (i - mx);
-  const k = Math.min(5, Math.floor(n / 2));
-  const first = ys.slice(0, k).reduce((a, b) => a + b, 0) / k, last = ys.slice(-k).reduce((a, b) => a + b, 0) / k;
+function Kpi({ value, label, sub, light }: { value: string; label: string; sub: string; light?: boolean }) {
   return (
-    <section className="card space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="label">Minutes until the first red flag (lower = faster)</span>
-        <span className="text-sm">
-          <span className="text-slate-400">first {k}: {first.toFixed(1)} min → last {k}: </span>
-          <b className={last < first ? "text-clear" : "text-warn"}>{last.toFixed(1)} min</b>
-          {last < first && <span className="text-slate-400"> ({Math.round((1 - last / first) * 100)}% faster)</span>}
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Minutes to first flag per interview">
-        {[0, max / 2, max].map((m) => (
-          <g key={m}>
-            <line x1={P.l} x2={W - P.r} y1={y(m)} y2={y(m)} className="stroke-slate-800" />
-            <text x={P.l - 6} y={y(m) + 3} textAnchor="end" className="fill-slate-500 text-[10px]">{m}</text>
-          </g>
-        ))}
-        <line x1={x(0)} y1={y(fit(0))} x2={x(n - 1)} y2={y(fit(n - 1))} className="stroke-clear/60" strokeDasharray="4 4" strokeWidth={1.5} />
-        <polyline fill="none" className="stroke-indigo-400" strokeWidth={2} points={trend.map((t, i) => `${x(i)},${y(t.minutes)}`).join(" ")} />
-        {trend.map((t, i) => (
-          <circle key={i} cx={x(i)} cy={y(t.minutes)} r={3.5} className="fill-indigo-300">
-            <title>{`${t.date}: ${t.minutes} min`}</title>
-          </circle>
-        ))}
-        <text x={x(0)} y={H - 6} className="fill-slate-500 text-[10px]">{trend[0].date}</text>
-        <text x={x(n - 1)} y={H - 6} textAnchor="end" className="fill-slate-500 text-[10px]">{trend[n - 1].date}</text>
+    <div className={`rounded-3xl p-5 ${light ? "bg-white text-slate-900" : "border border-white/10 bg-black/20"}`}>
+      <div className="text-4xl font-light tabular-nums">{value}</div>
+      <div className={`mt-1 text-sm ${light ? "text-slate-700" : "text-white/85"}`}>{label}</div>
+      <div className={`text-xs ${light ? "text-slate-400" : "text-white/45"}`}>{sub}</div>
+    </div>
+  );
+}
+
+/** Minutes until the first reliable flag, interview by interview (lower is better). */
+function TrendChart({ points }: { points: number[] }) {
+  if (points.length < 2) return <div className="text-sm text-white/40">Not enough interviews yet.</div>;
+  const W = 520, H = 150, pad = 8;
+  const max = Math.max(...points) * 1.1;
+  const x = (i: number) => pad + (i / (points.length - 1)) * (W - pad * 2);
+  const y = (v: number) => H - pad - (v / max) * (H - pad * 2);
+  const line = points.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(points.length - 1)},${H - pad} L${x(0)},${H - pad} Z`;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Minutes to first flag, falling over time">
+        <defs>
+          <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#f4ca8e" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#f4ca8e" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#g)" />
+        <path d={line} fill="none" stroke="#f4ca8e" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={x(points.length - 1)} cy={y(points[points.length - 1])} r="5" fill="white" />
       </svg>
-      <p className="text-xs text-slate-500">Each dot is a past interview that ended up suspicious. Dashed line = trend. Better questions first and learned weights mean problems surface sooner.</p>
-    </section>
+      <div className="mt-1 flex justify-between text-[11px] text-white/40">
+        <span>First interview · {points[0].toFixed(1)} min</span>
+        <span>Latest · {points[points.length - 1].toFixed(1)} min</span>
+      </div>
+    </div>
   );
 }

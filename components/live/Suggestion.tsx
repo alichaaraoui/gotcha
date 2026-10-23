@@ -11,7 +11,7 @@ const CALM: Record<string, string> = {
   watch: "Slightly unusual, but nothing to act on yet. Carry on and listen closely.",
 };
 
-export function Suggestion({ score, switched, onBack }: { score?: Score; switched?: { question: Question; why: string }; onBack: () => void }) {
+export function Suggestion({ score, switched, onBack }: { score?: Score; switched?: { question: Question; why: string; writing?: boolean }; onBack: () => void }) {
   const [why, setWhy] = useState(false);
   const reasons = score ? [...score.signals].sort((a, b) => b.value - a.value).filter((s) => s.value >= 0.4).slice(0, 3) : [];
 
@@ -21,6 +21,7 @@ export function Suggestion({ score, switched, onBack }: { score?: Score; switche
       <p className="mt-2 text-[16px] leading-snug">
         {switched ? switched.why : score ? CALM[score.level] ?? "Keep going with the next question." : "Ask the first question. Easy warm-ups teach it how this person normally talks."}
       </p>
+      {switched?.writing && <p className="mt-2 text-xs text-slate-400">Writing a sharper question from their GitHub…</p>}
       {switched && (
         <button onClick={onBack} className="mt-3 w-full rounded-full border border-slate-200 py-2.5 text-sm text-slate-600 hover:bg-slate-50">I disagree · back to the plan</button>
       )}

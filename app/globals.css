@@ -37,4 +37,7 @@ body { @apply bg-[var(--frame)] text-white antialiased; font-family: var(--font-
   .no-print { display: none !important; }
   .card { border-color: #ddd !important; background: white !important; backdrop-filter: none !important; break-inside: avoid; }
   .card *, .label { color: #111 !important; }
+  .stage { background: white !important; border: 1px solid #ddd; }
+  .stage * { color: #111 !important; }
+  main { padding: 0 !important; }
 }

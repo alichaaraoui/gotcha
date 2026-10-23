@@ -33,12 +33,13 @@ function generate({ trackId, n, seed, startDay, everyDays, qs, strong, idPrefix 
       const bump = strong.has(q) ? (assisted ? 22 : 3) : 0;
       return { questionId: q, risk: Math.min(99, Math.round(base + bump)) };
     });
+    // Assisted interviews: several flags, mostly confirmed (how often depends on the check).
+    // Genuine interviews: flags are rare (the 2-check rule), and recruiters clear them.
     const flags = [];
-    const nFlags = assisted ? 2 + Math.floor(rnd() * 3) : Math.floor(rnd() * 2);
+    const nFlags = assisted ? 2 + Math.floor(rnd() * 3) : rnd() < 0.15 ? 1 : 0;
     for (let f = 0; f < nFlags; f++) {
       const m = pick(Object.keys(methods));
-      const right = rnd() < methods[m];
-      flags.push({ method: m, verdict: right === assisted ? "suspicious" : "genuine" });
+      flags.push({ method: m, verdict: assisted && rnd() < 0.75 + methods[m] * 0.25 ? "suspicious" : "genuine" });
     }
     // Detection gets faster as the history grows (that's the learning story)
     const progress = (startDay + i * everyDays) / 80; // 0 → 1 over the seeded period
