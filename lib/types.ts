@@ -63,7 +63,7 @@ export interface Gotcha {
   id: string;
   text: string;
   topic: string;
-  style: "curveball" | "constraint-change" | "knowledge-boundary" | "own-code" | "other";
+  style: "constraint-change" | "knowledge-boundary" | "real-experience" | "own-code" | "curveball" | "other"; // one list: lib/gotcha.ts ALL_GOTCHA_STYLES
   realAnswer: string; // what a genuine answer sounds like
   createdAt: number;
 }

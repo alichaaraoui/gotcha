@@ -4,16 +4,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { AI_LIBRARY, useStore } from "@/lib/store";
+import { ALL_GOTCHA_STYLES } from "@/lib/gotcha";
 import { overlapIndexes, similarity } from "@/lib/scoring/text";
 import type { Gotcha } from "@/lib/types";
 
-const STYLES: { id: Gotcha["style"]; label: string; tip: string }[] = [
-  { id: "curveball", label: "Curveball", tip: "An unexpected angle on what they just said" },
-  { id: "constraint-change", label: "Change the rules", tip: "Same problem, new constraint. Relays lag." },
-  { id: "knowledge-boundary", label: "Knowledge check", tip: "Asks about something that doesn't exist" },
-  { id: "own-code", label: "Their own work", tip: "Only the real author knows" },
-  { id: "other", label: "Other", tip: "" },
-];
+const STYLES = ALL_GOTCHA_STYLES.map((s) => ({ id: s.id, label: s.label, tip: s.explain }));
 const MODEL_TINT: Record<string, string> = { "GPT-OSS 20B": "bg-[#d8d2f6]", "GPT-OSS 120B": "bg-[#e8c4e2]", "Qwen 3": "bg-[#f4ca8e]", "Claude (Opus 5.5)": "bg-[#f3d9c4]", "ChatGPT (GPT-6 Astra Ultra)": "bg-[#c9e4dc]" };
 
 export default function Library() {

@@ -5,22 +5,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { GOTCHA_STYLES, MAX_QUESTIONS, parseQuestionList, type GotchaSet, type GotchaStyle } from "@/lib/gotcha";
+import { GOTCHA_STYLES, MAX_QUESTIONS, parseQuestionList, styleLabel, styleOf, type GotchaSet, type GotchaStyle } from "@/lib/gotcha";
 import type { Question } from "@/lib/types";
 import { shadowsOf } from "@/lib/scoring/text";
 
 const DRAFT_KEY = "gotcha.questionDraft";
 const EXAMPLE = "How would you make sure a database migration doesn't take the site down?\nTell me about a bug that took you more than a day to find.\nWhat's your go-to language and why?";
 
-const STYLE_LABEL: Record<string, string> = {
-  "constraint-change": "Change the rules",
-  "knowledge-boundary": "Made-up feature",
-  "own-code": "Their own code",
-};
-const styleLabel = (q: Question) => (q.kind === "trap" ? STYLE_LABEL["knowledge-boundary"] : q.probeStyle ? STYLE_LABEL[q.probeStyle] : "Last time you did it");
 
 export default function QuestionsPage() {
-  const { session, addQuestions, removeQuestion } = useStore();
+  const { session, addQuestions, removeQuestion, gotchas: bank, saveGotcha } = useStore();
+  const [bankOpen, setBankOpen] = useState(false);
+  const inBank = (text: string) => bank.some((g) => g.text.trim().toLowerCase() === text.trim().toLowerCase());
+  const saveToBank = (q: Question) =>
+    !inBank(q.text) && saveGotcha({ id: `g-${Date.now()}`, text: q.text, topic: q.topic && q.topic !== "custom" ? q.topic : "Any", style: styleOf(q), realAnswer: q.goodAnswerHint, createdAt: Date.now() });
+  /** Bank questions go into the list, so Prepare writes their AI answers like any other question. */
+  const addFromBank = (text: string) => setDraft((d) => (parseQuestionList(d).some((x) => x.toLowerCase() === text.toLowerCase()) ? d : [d.trim(), text].filter(Boolean).join("\n")));
   const [draft, setDraft] = useState("");
   const [styles, setStyles] = useState<GotchaStyle[]>(["constraint-change", "knowledge-boundary", "real-experience", "own-code"]);
   const [sets, setSets] = useState<GotchaSet[]>([]);
@@ -83,7 +83,7 @@ export default function QuestionsPage() {
     <div className="grid min-h-[calc(100vh-96px)] grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <section className="stage flex flex-col gap-5 rounded-[32px] p-8">
         <div>
-          <div className="label">Your questions</div>
+          <div className="label">Prep · this interview</div>
           <h1 className="mt-1 text-4xl font-light tracking-tight">What do you want to ask?</h1>
           <p className="mt-2 max-w-xl text-sm text-white/60">
             Write or upload your questions, one per line. Several AI models answer each one, so GotCha can compare the candidate against all of them live, and we write gotcha follow-ups that are hard to fake.
@@ -106,8 +106,30 @@ export default function QuestionsPage() {
               <input type="file" accept=".txt,.csv,.md,text/plain,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
             </label>
             {!draft && <><span>·</span><button className="underline hover:text-white" onClick={() => setDraft(EXAMPLE)}>use examples</button></>}
+            <span>·</span>
+            <button className="underline hover:text-white" onClick={() => setBankOpen((o) => !o)}>{bankOpen ? "Hide my Gotcha Bank" : `Add from my Gotcha Bank (${bank.length})`}</button>
           </span>
         </label>
+
+        {bankOpen && (
+          <div className="space-y-2 rounded-3xl border border-white/10 bg-black/20 p-4">
+            <div className="flex items-center justify-between">
+              <span className="label">My Gotcha Bank</span>
+              <Link href="/library" className="text-xs text-white/50 underline hover:text-white">Manage in Library</Link>
+            </div>
+            <ul className="max-h-56 space-y-1.5 overflow-y-auto pr-1">
+              {bank.map((g) => {
+                const listed = list.some((x) => x.toLowerCase() === g.text.toLowerCase());
+                return (
+                  <li key={g.id} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] px-3 py-2 text-sm">
+                    <span className="flex-1 text-white/85">{g.text}<span className="ml-2 text-[11px] text-white/40">{styleLabel(g.style)}</span></span>
+                    <button className="shrink-0 text-xs text-white/60 hover:text-white disabled:opacity-40" disabled={listed} onClick={() => addFromBank(g.text)}>{listed ? "✓ In list" : "+ Add"}</button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         <div className="space-y-2">
           <span className="label">Gotcha follow-ups to write</span>
@@ -177,7 +199,7 @@ export default function QuestionsPage() {
               {s.gotchas.length > 0 && (
                 <div className="space-y-2 border-l border-white/15 pl-4">
                   {s.gotchas.map((g) => (
-                    <QuestionRow key={g.id} q={g} picked={picked.has(g.id)} onToggle={() => toggle(g.id)} open={open === g.id} onOpen={() => setOpen(open === g.id ? undefined : g.id)} badge={styleLabel(g)} small />
+                    <QuestionRow key={g.id} q={g} picked={picked.has(g.id)} onToggle={() => toggle(g.id)} open={open === g.id} onOpen={() => setOpen(open === g.id ? undefined : g.id)} badge={styleLabel(styleOf(g))} small saved={inBank(g.text)} onSave={() => saveToBank(g)} />
                   ))}
                 </div>
               )}
@@ -210,7 +232,7 @@ function AiAnswers({ q }: { q: Question }) {
   );
 }
 
-function QuestionRow({ q, picked, onToggle, open, onOpen, badge, small }: { q: Question; picked: boolean; onToggle: () => void; open: boolean; onOpen: () => void; badge: string; small?: boolean }) {
+function QuestionRow({ q, picked, onToggle, open, onOpen, badge, small, saved, onSave }: { q: Question; picked: boolean; onToggle: () => void; open: boolean; onOpen: () => void; badge: string; small?: boolean; saved?: boolean; onSave?: () => void }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-start gap-3">
@@ -222,9 +244,16 @@ function QuestionRow({ q, picked, onToggle, open, onOpen, badge, small }: { q: Q
       </div>
       <div className="pl-7 text-xs text-white/55">
         <p>A real answer: {q.goodAnswerHint}</p>
-        <button className="mt-1 underline hover:text-white" onClick={onOpen}>
-          {open ? "Hide" : "Show"} {shadowsOf(q).length > 1 ? `${shadowsOf(q).length} possible AI answers` : "what an AI would say"}
-        </button>
+        <div className="mt-1 flex flex-wrap gap-x-3">
+          <button className="underline hover:text-white" onClick={onOpen}>
+            {open ? "Hide" : "Show"} {shadowsOf(q).length > 1 ? `${shadowsOf(q).length} possible AI answers` : "what an AI would say"}
+          </button>
+          {onSave && (
+            <button className="underline hover:text-white disabled:no-underline disabled:opacity-60" disabled={saved} onClick={onSave}>
+              {saved ? "✓ In my Gotcha Bank" : "Save to my Gotcha Bank"}
+            </button>
+          )}
+        </div>
         {open && <AiAnswers q={q} />}
       </div>
     </div>

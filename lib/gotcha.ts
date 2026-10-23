@@ -4,7 +4,7 @@
 // "the last time you actually did this", and their own repo when a GitHub profile is loaded.
 // Groq when available (rotating models: free limits are per model), offline templates otherwise.
 // OWNER: Person 2
-import type { CandidateProfile, ProbeStyle, Question, QuestionKind, StageId } from "@/lib/types";
+import type { CandidateProfile, Gotcha, ProbeStyle, Question, QuestionKind, StageId } from "@/lib/types";
 import { GROQ_MODELS, MODEL_LABEL, groqJson } from "@/lib/groq";
 import { fallbackShadow, rankRepos } from "@/lib/questions";
 import { techMentioned } from "@/lib/scoring/signals";
@@ -17,6 +17,22 @@ export const GOTCHA_STYLES: { id: GotchaStyle; label: string; explain: string }[
   { id: "real-experience", label: "Last time you did it", explain: "Forces a real story: what broke, who noticed, the actual fix." },
   { id: "own-code", label: "Their own code", explain: "Ties it to their GitHub repo. Only the author knows the details." },
 ];
+
+/** The one style list for every gotcha: Prep writes the first four; the Gotcha Bank can hold all six. */
+export type BankStyle = Gotcha["style"];
+export const ALL_GOTCHA_STYLES: { id: BankStyle; label: string; explain: string }[] = [
+  ...GOTCHA_STYLES,
+  { id: "curveball", label: "Curveball", explain: "An unexpected angle on what they just said. Read-out answers fall apart." },
+  { id: "other", label: "Other", explain: "" },
+];
+export const styleLabel = (id: BankStyle) => ALL_GOTCHA_STYLES.find((s) => s.id === id)?.label ?? "Other";
+/** Which style a prepared gotcha question was written in. */
+export function styleOf(q: Question): GotchaStyle {
+  if (q.kind === "trap" || q.probeStyle === "knowledge-boundary") return "knowledge-boundary";
+  if (q.probeStyle === "own-code") return "own-code";
+  if (q.probeStyle === "constraint-change") return "constraint-change";
+  return "real-experience";
+}
 
 export interface GotchaRequest {
   questions: string[];

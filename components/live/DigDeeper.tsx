@@ -6,6 +6,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { styleLabel } from "@/lib/gotcha";
 import type { CandidateProfile, Gotcha, Question, QuestionsResponse } from "@/lib/types";
 
 type Tab = "github" | "answer" | "gotchas" | "own";
@@ -102,7 +103,7 @@ export function DigDeeper({ profile, trackId, last, disabled, gotchas, onAsk, on
                   <div key={g.id} className="rounded-2xl bg-white/70 p-3">
                     <p className="text-sm leading-snug text-slate-900">{g.text}</p>
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-slate-500">{g.style.replace("-", " ")} · {g.topic}</span>
+                      <span className="text-[11px] text-slate-500">{styleLabel(g.style)} · {g.topic}</span>
                       <button disabled={disabled} onClick={() => onAskGotcha(g)} className="ml-auto shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-40">Ask this →</button>
                     </div>
                   </div>
