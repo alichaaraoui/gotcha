@@ -222,22 +222,25 @@ export default function Live() {
   const words = source === "zoom" ? call.transcript : speech.transcript;
   const listenError = source === "zoom" ? call.error : source === "mic" ? speech.error : undefined;
   const cantListen =
-    source === "zoom" ? !call.connected || !call.hasAudio : source === "mic" ? !speech.supported || speech.micReady === false : false;
-  const needsConnect = source === "zoom" && !call.connected;
+    source === "zoom" ? !call.listening : source === "mic" ? !speech.supported || speech.micReady === false : false;
+  const needsConnect = source === "zoom" && !call.listening;
 
   return (
     <div className="grid h-[calc(100vh-96px)] min-h-[620px] grid-cols-[1fr_420px] gap-5">
       {/* ───────── Left: the Zoom call (candidate video + their words) ───────── */}
       <section className={`min-h-0 rounded-[32px] ${needsConnect ? "grid place-items-center border border-dashed border-white/15" : "stage flex flex-col gap-4 p-6"}`}>
         {needsConnect && (
-          <div className="max-w-md space-y-5 text-center">
-            <p className="text-3xl font-light">Bring your Zoom call in here</p>
-            <ol className="space-y-2 text-left text-sm text-white/65">
-              <li><b className="text-white">1.</b> Join the interview in <b className="text-white">Chrome</b> (on the Zoom invite, choose <i>Join from your browser</i>).</li>
-              <li><b className="text-white">2.</b> Click <b className="text-white">Connect Zoom call</b> below and pick that Chrome tab.</li>
-              <li><b className="text-white">3.</b> Make sure <b className="text-white">Also share tab audio</b> is on. That&apos;s how GotCha hears the candidate, not you.</li>
+          <div className="w-full max-w-md space-y-6 text-center">
+            <div>
+              <p className="text-3xl font-light">Bring your Zoom call in here</p>
+              <p className="mt-2 text-sm text-white/55">GotCha listens to the candidate&apos;s voice coming out of Zoom, never your microphone.</p>
+            </div>
+            <ol className="space-y-3 rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-left text-sm text-white/65">
+              <li><b className="text-white">1.</b> Open the Zoom invite and choose <b className="text-white">Join from your browser</b> (Chrome or Edge).</li>
+              <li><b className="text-white">2.</b> Come back here, click <b className="text-white">Share the Zoom tab</b>, and pick that tab.</li>
+              <li><b className="text-white">3.</b> Keep <b className="text-white">Also share tab audio</b> switched on, then click Share.</li>
             </ol>
-            <button className="btn-primary px-6 py-3 text-base" onClick={call.connect}>Connect Zoom call</button>
+            <button className="btn-primary px-6 py-3 text-base" onClick={call.shareCall}>Share the Zoom tab</button>
             {call.error && <p className="text-sm text-red-300">{call.error}</p>}
             <p className="text-xs text-white/40">
               Interviewing in person? <button className="underline" onClick={() => setSource("mic")}>Use this laptop&apos;s mic</button> · No call?{" "}
@@ -254,15 +257,15 @@ export default function Live() {
               <div className="text-xs text-white/50">@{p.login} · {session.trackPath.length ? mmss(now - session.startedAt) : "0:00"}</div>
             </div>
             <span className="chip ml-auto">
-              <span className={`h-2 w-2 rounded-full ${source === "zoom" ? (call.hasAudio ? "bg-clear" : "bg-warn") : "bg-white/50"}`} />
-              {source === "zoom" ? (call.hasAudio ? "Hearing the candidate from Zoom" : "No call audio") : source === "mic" ? "Laptop mic (same room)" : "Demo answers"}
+              <span className={`h-2 w-2 rounded-full ${source === "zoom" ? (call.heard ? "bg-clear" : "bg-watch") : "bg-white/50"}`} />
+              {source === "zoom" ? (call.heard ? `Hearing the candidate · ${call.audioLabel}` : `Waiting for sound · ${call.audioLabel}`) : source === "mic" ? "Laptop mic (same room)" : "Demo answers"}
             </span>
-            {source === "zoom" && call.connected && <button className="chip hover:bg-white/20" onClick={call.disconnect}>Disconnect</button>}
+            {source === "zoom" && call.listening && <button className="chip hover:bg-white/20" onClick={call.disconnect}>Disconnect</button>}
           </header>
 
           <div className="grid min-h-0 flex-1 grid-cols-[1.4fr_1fr] gap-4">
             <div className="min-h-0 overflow-y-auto [&_.card]:rounded-[28px] [&_.card]:border-white/10 [&_.card]:bg-black/20">
-              <EyePanel ref={eyes} stream={source === "zoom" ? call.stream : null} emphasize={!!latest && latest.level !== "clear"} />
+              <EyePanel ref={eyes} stream={source === "zoom" ? call.video : null} emphasize={!!latest && latest.level !== "clear"} />
             </div>
             <div className="flex min-h-0 flex-col gap-2">
               {compareOpen ? (
@@ -382,7 +385,7 @@ export default function Live() {
               <label className="block space-y-1">
                 <span className="text-xs text-slate-500">Listen to</span>
                 <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={source} disabled={!!answering} onChange={(e) => setSource(e.target.value as typeof source)}>
-                  <option value="zoom">The Zoom call (candidate only)</option>
+                  <option value="zoom">The Zoom tab (candidate only)</option>
                   <option value="mic">This laptop&apos;s mic (in-person interview)</option>
                   <option value="organic">Demo answers · organic candidate</option>
                   <option value="assisted">Demo answers · AI-assisted candidate</option>
