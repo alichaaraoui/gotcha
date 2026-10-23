@@ -1,22 +1,16 @@
 "use client";
-// Hears the CANDIDATE, not the recruiter. Two ways in:
-//  • Zoom desktop app: Zoom's speaker output → virtual audio cable (BlackHole / VB-CABLE) → picked here as an input.
-//    Works in any browser. The Zoom window can be shared separately for video + eye tracking.
-//  • Zoom in a browser tab: share that tab with "Also share tab audio" (Chrome / Edge only).
-// Either way the audio is cut into ~5s files and transcribed by /api/transcribe (Groq Whisper).
+// Hears the CANDIDATE, not the recruiter: the recruiter shares the browser tab running Zoom with
+// "Also share tab audio". Tab audio only contains the other people on the call (Chrome / Edge).
+// Video → the panel + eye tracking. Audio → ~5s files transcribed by /api/transcribe (Groq Whisper).
 // OWNER: Person 1
 import { useCallback, useRef, useState } from "react";
 import type { WordStamp } from "@/lib/types";
 
 const CHUNK_MS = 5000; // ~12 requests/min: comfortable on Groq's free plan
-const VIRTUAL = /blackhole|vb-?cable|cable output|loopback|soundflower|zoomaudio/i;
-
-export interface AudioInput { deviceId: string; label: string; virtual: boolean }
 
 export function useCallCapture() {
   const [video, setVideo] = useState<MediaStream | null>(null);
   const [audioLabel, setAudioLabel] = useState<string | null>(null); // what we're listening to
-  const [inputs, setInputs] = useState<AudioInput[]>([]);
   const [transcript, setTranscript] = useState("");
   const [heard, setHeard] = useState(false); // got words back at least once
   const [error, setError] = useState<string>();
@@ -76,39 +70,7 @@ export function useCallCapture() {
     loop(audio);
   };
 
-  /** List audio inputs; virtual cables (BlackHole etc.) first. Labels need mic permission once. */
-  const loadInputs = useCallback(async () => {
-    try {
-      const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
-      probe.getTracks().forEach((t) => t.stop());
-      const all = (await navigator.mediaDevices.enumerateDevices())
-        .filter((d) => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications")
-        .map((d) => ({ deviceId: d.deviceId, label: d.label || "Audio input", virtual: VIRTUAL.test(d.label) }))
-        .sort((a, b) => Number(b.virtual) - Number(a.virtual));
-      setInputs(all);
-      return all;
-    } catch {
-      setError("Allow microphone access so GotCha can list your audio inputs.");
-      return [];
-    }
-  }, []);
-
-  /** Zoom desktop app: listen to the virtual cable Zoom is playing into. Raw audio, no voice processing. */
-  const useInput = useCallback(async (deviceId: string) => {
-    setError(undefined);
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      });
-      const label = s.getAudioTracks()[0]?.label ?? "Audio input";
-      if (!VIRTUAL.test(label)) setError("Heads-up: this looks like a real microphone, so it will hear you too. Pick BlackHole for the candidate only.");
-      listenTo(s, label);
-    } catch {
-      setError("Couldn't open that audio input.");
-    }
-  }, []);
-
-  /** Share the Zoom window (desktop app) or the Zoom tab (browser). A tab can also bring its audio. */
+  /** Share the Zoom tab; its audio is the candidate. */
   const shareCall = useCallback(async () => {
     setError(undefined);
     try {
@@ -122,6 +84,7 @@ export function useCallCapture() {
       s.getVideoTracks()[0]?.addEventListener("ended", () => setVideo(null));
       const tabAudio = s.getAudioTracks();
       if (tabAudio.length) listenTo(new MediaStream(tabAudio), "Zoom tab audio");
+      else setError('No sound came with that share. Pick the Zoom TAB (not a window) and keep "Also share tab audio" on.');
     } catch {
       setError("Sharing was cancelled.");
     }
@@ -155,7 +118,7 @@ export function useCallCapture() {
   }, []);
 
   return {
-    video, audioLabel, listening: !!audioLabel, heard, inputs, transcript, error,
-    loadInputs, useInput, shareCall, disconnect, startAnswer, endAnswer,
+    video, audioLabel, listening: !!audioLabel, heard, transcript, error,
+    shareCall, disconnect, startAnswer, endAnswer,
   };
 }
