@@ -17,7 +17,7 @@ export default function Insights() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">What Unscripted has learned</h1>
+      <h1 className="text-2xl font-semibold">What GotCha has learned</h1>
       <p className="text-sm text-slate-400">{history.length} past interviews · {knownAi.length} known AI answers in the library</p>
 
       <section className="card">
