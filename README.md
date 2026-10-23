@@ -7,7 +7,7 @@ A recruiter side panel that spots AI-assisted answers in live technical intervie
 Built at the Method (a GlobalLogic company) hackathon, Oct 2026, for the "Live Interview Integrity Engine" brief, by **Ali Chaaraoui** (team lead: live interview, report, library, deployment), **zeke75895** (scoring engine, APIs, Prep) and **Shailee Surti** (eye tracking, clips, learning).
 
 ### Redeploying the live demo
-The demo runs on Vercel (project `gotcha`) and **redeploys automatically on every push to [alichaaraoui/gotcha](https://github.com/alichaaraoui/gotcha)** (Ali's fork of this repo). The Groq key is stored on Vercel as a secret, never in the repo. To ship team changes: sync the fork (GitHub's "Sync fork" button, or `git push mine main`). Manual deploy from a checkout linked to the project:
+The demo runs on Vercel (project `gotcha`); the Groq key is stored there as a secret, never in the repo. From a checkout linked to that project:
 ```
 npx vercel deploy --prod --yes
 ```
