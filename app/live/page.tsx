@@ -54,6 +54,10 @@ export default function Live() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+  // Get mic permission when the room opens (not mid-answer); skipped in replay mode
+  useEffect(() => {
+    if (speech.supported && !replayKey && speech.micReady === null) speech.prepare();
+  }, [speech.supported, replayKey, speech.micReady, speech.prepare]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(undefined), 2200);
@@ -284,6 +288,7 @@ export default function Live() {
             <span className="chip-light">{KIND_LABEL[shown?.kind ?? "easy"]}</span>
             {shown?.repoRef && <span className="chip-light">From GitHub · {shown.repoRef}</span>}
           </div>
+          {speech.error && <p className="mt-3 rounded-2xl bg-rose-100/80 px-3 py-2 text-xs text-rose-700">{speech.error}</p>}
           <p className="mt-3 text-xs leading-relaxed text-slate-600">
             <span className="text-slate-800">A real answer:</span> {shown?.goodAnswerHint}
           </p>
@@ -294,7 +299,7 @@ export default function Live() {
             <button className="circle" title="Test further: probe track" onClick={testNow} disabled={!!answering}><Icon name="probe" /></button>
             <button className="circle" title="Flag this moment (F)" onClick={manualFlag}><Icon name="flag" /></button>
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-slate-600">{answering ? (replayKey ? "Replaying…" : "Tap when they finish") : !replayKey && !speech.supported ? "Mic needs Chrome" : "Tap after you ask"}</span>
+              <span className="text-xs text-slate-600">{answering ? (replayKey ? "Replaying…" : "Tap when they finish") : !replayKey && !speech.supported ? "Mic needs Chrome" : !replayKey && speech.micReady === null ? "Allow the mic ↑" : "Tap after you ask"}</span>
               {!answering ? (
                 <button onClick={ask} disabled={scoring || (!replayKey && !speech.supported)} className="grid h-14 w-14 place-items-center rounded-full bg-white text-slate-900 shadow-lg transition hover:scale-105 disabled:opacity-40" title="I asked it, start listening">
                   <Icon name="mic" className="h-5 w-5" />
