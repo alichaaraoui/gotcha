@@ -1,7 +1,7 @@
 "use client";
 // Web Speech API (Chrome only) → live transcript with a timestamp per word.
 // OWNER: Person 1
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WordStamp } from "@/lib/types";
 
 export function useSpeech() {
@@ -11,7 +11,9 @@ export function useSpeech() {
   const finalText = useRef("");
   const rec = useRef<any>(null);
 
-  const supported = typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+  // Checked after mount so server and client render the same first frame
+  const [supported, setSupported] = useState(false);
+  useEffect(() => setSupported("webkitSpeechRecognition" in window || "SpeechRecognition" in window), []);
 
   const start = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
