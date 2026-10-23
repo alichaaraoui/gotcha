@@ -6,7 +6,8 @@
 import { useCallback, useRef, useState } from "react";
 import type { WordStamp } from "@/lib/types";
 
-const CHUNK_MS = 5000; // ~12 requests/min: comfortable on Groq's free plan
+const CHUNK_MS = 5000;
+const SPEECH_LEVEL = 0.01; // RMS above this = someone is talking (silence is ~0.000–0.003)
 
 export function useCallCapture() {
   const [video, setVideo] = useState<MediaStream | null>(null);
@@ -20,6 +21,9 @@ export function useCallCapture() {
   const audioStream = useRef<MediaStream | null>(null); // the shared tab's audio
   const recordStream = useRef<MediaStream | null>(null); // Web Audio copy we actually record
   const audioCtx = useRef<AudioContext | null>(null);
+  const meter = useRef<number | null>(null);
+  const peak = useRef(0); // loudest moment in the current chunk
+  const pending = useRef(0); // transcriptions still in flight
   const running = useRef(false);
 
   const answerWords = (from: number) => words.current.filter((x) => x.t >= from - 300);
@@ -29,26 +33,35 @@ export function useCallCapture() {
     setTranscript(from == null ? "" : answerWords(from).map((x) => x.w).join(" "));
   };
 
-  const transcribe = async (blob: Blob, startedAt: number) => {
+  const transcribe = async (blob: Blob, startedAt: number, attempt = 0): Promise<void> => {
     const form = new FormData();
     form.append("audio", blob);
     form.append("startedAt", String(startedAt));
     try {
-      const data = await fetch("/api/transcribe", { method: "POST", body: form }).then((r) => r.json());
+      const res = await fetch("/api/transcribe", { method: "POST", body: form });
+      const data = await res.json();
       if (data.error === "no-key") return setError("Add your Groq key to .env.local, then restart the app.");
-      if (data.error) return setError("Transcription hiccup, retrying…");
+      if (res.status === 429 && attempt < 3) {
+        // Groq free plan: 20 requests/min per key. Wait the few seconds it asks for, then retry this chunk.
+        const wait = Number(/try again in ([\d.]+)s/.exec(data.detail ?? "")?.[1] ?? 3);
+        setError("Busy for a moment (Groq free-plan limit). Catching up…");
+        await new Promise((r) => setTimeout(r, (wait + 0.5) * 1000));
+        return transcribe(blob, startedAt, attempt + 1);
+      }
+      if (data.error) return setError("Transcription hiccup. The next chunk will retry.");
       setError(undefined);
-      if (data.words.length) setHeard(true);
       // Chunks can come back out of order; keep each chunk's own word order, slot chunks by start time
       chunks.current = [...chunks.current.filter((c) => c.startedAt !== startedAt), { startedAt, words: data.words }].sort((x, y) => x.startedAt - y.startedAt);
       words.current = chunks.current.flatMap((c) => c.words);
       refresh();
     } catch {
-      setError("Transcription hiccup, retrying…");
+      setError("Transcription hiccup. The next chunk will retry.");
     }
   };
 
-  // A fresh MediaRecorder per chunk, so every chunk is a complete, decodable file
+  // A fresh MediaRecorder per chunk, so every chunk is a complete, decodable file.
+  // Chunks are only SENT while an answer is being recorded and only if someone actually spoke,
+  // which keeps a whole interview well under Groq's free-plan limit.
   const loop = (audio: MediaStream, failures = 0) => {
     if (!running.current || recordStream.current !== audio) return;
     let rec: MediaRecorder;
@@ -64,9 +77,14 @@ export function useCallCapture() {
     }
     const startedAt = Date.now();
     const parts: Blob[] = [];
+    peak.current = 0;
     rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
     rec.onstop = () => {
-      transcribe(new Blob(parts, { type: rec.mimeType || "audio/webm" }), startedAt);
+      const spoke = peak.current > SPEECH_LEVEL;
+      if (markAt.current != null && spoke) {
+        pending.current++;
+        transcribe(new Blob(parts, { type: rec.mimeType || "audio/webm" }), startedAt).finally(() => pending.current--);
+      }
       loop(audio);
     };
     setTimeout(() => rec.state === "recording" && rec.stop(), CHUNK_MS);
@@ -78,7 +96,19 @@ export function useCallCapture() {
     // Web Audio and record that copy. (Not connected to the speakers: no double playback.)
     const ctx = new AudioContext();
     const dest = ctx.createMediaStreamDestination();
-    ctx.createMediaStreamSource(audio).connect(dest);
+    const src = ctx.createMediaStreamSource(audio);
+    src.connect(dest);
+    // Local volume meter: drives the "Hearing the candidate" light and skips silent chunks
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    src.connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    meter.current = window.setInterval(() => {
+      analyser.getFloatTimeDomainData(buf);
+      const rms = Math.sqrt(buf.reduce((a, v) => a + v * v, 0) / buf.length);
+      peak.current = Math.max(peak.current, rms);
+      if (rms > SPEECH_LEVEL) setHeard(true);
+    }, 150);
     audioCtx.current = ctx;
     audioStream.current = audio;
     recordStream.current = dest.stream;
@@ -90,6 +120,7 @@ export function useCallCapture() {
 
   const stopAudio = () => {
     running.current = false;
+    if (meter.current) window.clearInterval(meter.current);
     audioStream.current?.getTracks().forEach((t) => t.stop());
     audioCtx.current?.close().catch(() => {});
     audioStream.current = recordStream.current = audioCtx.current = null;
@@ -143,7 +174,8 @@ export function useCallCapture() {
   /** Recruiter tapped "They finished": wait for the last chunk, then return the answer's words. */
   const endAnswer = useCallback(async (): Promise<{ transcript: string; words: WordStamp[] }> => {
     const from = markAt.current ?? 0;
-    await new Promise((r) => setTimeout(r, CHUNK_MS + 1500)); // let the in-flight chunk come back
+    await new Promise((r) => setTimeout(r, CHUNK_MS + 500)); // let the current chunk finish recording
+    for (let i = 0; i < 40 && pending.current > 0; i++) await new Promise((r) => setTimeout(r, 250)); // and come back
     markAt.current = null;
     const ws = answerWords(from);
     return { transcript: ws.map((x) => x.w).join(" "), words: ws };
