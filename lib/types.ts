@@ -261,4 +261,19 @@ export interface IdentityReport {
   matches?: GithubMatch[];
   githubSource: "live" | "cache" | "fixture" | "none";
   textSource: "groq" | "heuristic" | "none";
+  story: CandidateStory;
+}
+
+/** Who this person is at a glance: claims merged with GitHub evidence, flags where the story breaks. */
+export interface CandidateStory {
+  summary: string; // 3–4 plain sentences
+  summarySource: "groq" | "facts";
+  timeline: StoryEvent[]; // oldest first
+}
+
+export interface StoryEvent {
+  date: string; // "2008-03", "2023", or "now"
+  label: string;
+  source: "claimed" | "github";
+  flag?: { status: "warn" | "risk"; why: string };
 }

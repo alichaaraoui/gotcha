@@ -1,7 +1,7 @@
 // Identity consistency: does the profile hold together? Pure functions, no network.
 // Catches copied/template LinkedIns, impossible timelines, and GitHubs that don't match the person.
 // The tool suggests, the recruiter decides.
-import type { CandidateProfile, IdentityCheck, IdentityReport, IdentityRequest, IdentityStatus } from "@/lib/types";
+import type { CandidateProfile, CandidateStory, IdentityCheck, IdentityReport, IdentityRequest, IdentityStatus } from "@/lib/types";
 
 /** Raw GitHub fields the identity checks need (more than CandidateProfile keeps). */
 export interface GithubFacts {
@@ -269,8 +269,115 @@ export function checkActivity(gh: GithubFacts | null): IdentityCheck {
   if (burst) notes.push(`${recent.length} of ${own.length} own repos were created in the last 2 months on a ${Math.floor(ageYrs)}-year-old account`);
   if (forkHeavy) notes.push(`${forks} of ${gh.repos.length} repos are forks`);
   if (burst && pushDays.length >= 10 && spanDays <= 21) notes.push(`all ${pushDays.length} recent events fall within ${spanDays} days`);
+  const bot = sameTimeEvents(gh);
+  if (bot) notes.push(`${bot.n} events at exactly ${bot.time} UTC on different days, which looks scripted`);
   if (!notes.length) return { ...base, status: "ok", why: `${own.length} own repos${forks ? ` (+${forks} fork${forks === 1 ? "" : "s"})` : ""}, activity spread over ${Math.max(1, Math.round(spanDays / 7))} weeks.` };
-  return { ...base, status: burst && forkHeavy ? "risk" : "warn", why: cap(`${notes.join("; ")}. Looks set up right before applying.`) };
+  return { ...base, status: (burst && forkHeavy) || (bot && (burst || forkHeavy)) ? "risk" : "warn", why: cap(`${notes.join("; ")}. Looks set up right before applying.`) };
+}
+
+/** Bot-like: many events at the identical time of day (to the minute) across different days. */
+export function sameTimeEvents(gh: GithubFacts): { n: number; time: string } | null {
+  const byTime = new Map<string, Set<string>>();
+  gh.events.forEach((e) => {
+    const time = e.createdAt.slice(11, 16);
+    byTime.set(time, (byTime.get(time) ?? new Set()).add(e.createdAt.slice(0, 10)));
+  });
+  const [time, days] = [...byTime.entries()].sort((a, b) => b[1].size - a[1].size)[0] ?? [];
+  return time && days && days.size >= 5 ? { n: days.size, time } : null;
+}
+
+// ---------- Candidate story: claims + GitHub evidence on one timeline ----------
+const TECH_ROLE = /engineer|developer|software|programmer|data|machine learning|\bml\b|scientist|intern|devops|sre/i;
+const fmtYm = (iso: string) => iso.slice(0, 7);
+const sortKey = (d: string) => (d === "now" ? 999999 : +d.slice(0, 4) * 100 + (d.length > 4 ? +d.slice(5, 7) : 0));
+
+export function buildStory(gh: GithubFacts | null, text: string, st: Stage, entries: Entry[], checks: IdentityCheck[]): CandidateStory {
+  const flagOf = (id: IdentityCheck["id"]) => {
+    const c = checks.find((x) => x.id === id && (x.status === "warn" || x.status === "risk"));
+    // One line on the timeline: the first clause of the check's reason
+    if (!c) return undefined;
+    const parts = c.why.split(/;\s|\.\s/);
+    const line = parts[0].length < 30 && parts[1] ? `${parts[0]}: ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}` : parts[0];
+    return { status: c.status as "warn" | "risk", why: clip(line.replace(/\.$/, ""), 110) };
+  };
+  const tl: CandidateStory["timeline"] = [];
+  const own = gh?.repos.filter((r) => !r.fork) ?? [];
+  const ownYears = new Set(own.flatMap((r) => [yearOf(r.createdAt), yearOf(r.pushedAt)]));
+
+  // Claimed: education and jobs from the pasted text
+  entries.forEach((e) => {
+    const span = `${e.start}–${e.end >= YEAR() ? "present" : e.end}`;
+    let flag: { status: "warn" | "risk"; why: string } | undefined;
+    if (!e.edu && !e.partTime && st.student && st.studyStart && e.start < st.studyStart - 1)
+      flag = { status: e.senior || e.start < st.studyStart - 3 ? "risk" : "warn", why: `Full-time role starts ${st.studyStart - e.start} years before college (${st.studyStart})` };
+    else if (!e.edu && e.senior && st.student && st.studyStart && e.end >= st.studyStart) flag = { status: "risk", why: "Senior title while a current student" };
+    else if (!e.edu && gh && TECH_ROLE.test(e.title)) {
+      // Past years of the role only: GitHub can't show this year's private work either way
+      const years = Array.from({ length: Math.max(0, Math.min(e.end, YEAR() - 1) - e.start + 1) }, (_, i) => e.start + i);
+      if (years.length >= 2 && !years.some((y) => ownYears.has(y)))
+        flag = { status: "warn", why: `No public GitHub activity ${years[0]}–${years[years.length - 1]} (work code is often private, so ask)` };
+    }
+    tl.push({ date: `${e.start}`, label: `${e.edu ? "Studies" : e.partTime ? "Part-time" : "Job"}: ${e.title} (${span})`, source: "claimed", ...(flag ? { flag } : {}) });
+  });
+  if (st.gradYear && !entries.some((e) => e.edu)) tl.push({ date: `${st.gradYear}`, label: `Expected graduation${st.school ? `, ${shortSchool(st.school)}` : ""}`, source: "claimed" });
+
+  if (gh) {
+    tl.push({ date: fmtYm(gh.createdAt), label: "GitHub account created", source: "github", ...(flagOf("timeline_account") ? { flag: flagOf("timeline_account") } : {}) });
+    const first = [...own].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (first) tl.push({ date: fmtYm(first.createdAt), label: `First own repo: ${first.name}${first.language ? ` (${first.language})` : ""}`, source: "github" });
+    // Languages over time: what they started repos in, per year
+    const byYear = new Map<number, Record<string, number>>();
+    own.forEach((r) => {
+      if (!r.language) return;
+      const y = yearOf(r.createdAt), m = byYear.get(y) ?? {};
+      m[r.language] = (m[r.language] ?? 0) + 1;
+      byYear.set(y, m);
+    });
+    [...byYear.entries()].forEach(([y, m]) => {
+      const langs = Object.entries(m).sort((a, b) => b[1] - a[1]).map(([l]) => l);
+      const n = Object.values(m).reduce((a, b) => a + b, 0);
+      tl.push({ date: `${y}`, label: `${n} new repo${n === 1 ? "" : "s"}, mostly ${langs.slice(0, 2).join(" + ")}`, source: "github" });
+    });
+    // Most active month (repo creations + recent events)
+    const months: Record<string, number> = {};
+    [...own.map((r) => r.createdAt), ...gh.events.map((e) => e.createdAt)].forEach((d) => (months[fmtYm(d)] = (months[fmtYm(d)] ?? 0) + 1));
+    const peak = Object.entries(months).sort((a, b) => b[1] - a[1])[0];
+    const act = flagOf("activity");
+    if (peak) {
+      const repos = own.filter((r) => fmtYm(r.createdAt) === peak[0]).length;
+      const evs = peak[1] - repos;
+      const parts = [repos && `${repos} new repo${repos === 1 ? "" : "s"}`, evs && `${evs} public event${evs === 1 ? "" : "s"}`].filter(Boolean);
+      tl.push({ date: peak[0], label: `Busiest month: ${parts.join(", ")}`, source: "github", ...(act ? { flag: act } : {}) });
+    }
+    const forks = gh.repos.length - own.length;
+    if (forks && !own.length) tl.push({ date: fmtYm(gh.repos[0].createdAt), label: `${forks} forks, no code of their own`, source: "github", flag: { status: "risk", why: "Only forks of other people's projects" } });
+  }
+  const copied = flagOf("copied_text");
+  if (text.trim()) tl.push({ date: "now", label: "Applies with this LinkedIn / resume text", source: "claimed", ...(copied ? { flag: copied } : {}) });
+
+  tl.sort((a, b) => sortKey(a.date) - sortKey(b.date));
+  return { summary: factsSummary(gh, st, entries, checks), summarySource: "facts", timeline: tl };
+}
+
+/** Deterministic narrative: the facts strung together, no judgement words. */
+export function factsSummary(gh: GithubFacts | null, st: Stage, entries: Entry[], checks: IdentityCheck[]): string {
+  const out: string[] = [];
+  const job = entries.filter((e) => !e.edu).sort((a, b) => b.start - a.start)[0];
+  if (st.student) out.push(`Says they're a student${st.school ? ` at ${shortSchool(st.school)}` : ""}${st.studyStart ? ` since ${st.studyStart}` : ""}${st.gradYear ? `, graduating ${st.gradYear}` : ""}.`);
+  else if (job) out.push(`Says they work as ${job.title} since ${job.start}.`);
+  if (gh) {
+    const own = gh.repos.filter((r) => !r.fork);
+    const first = own.map((r) => yearOf(r.createdAt)).sort()[0];
+    const langs: Record<string, number> = {};
+    own.forEach((r) => r.language && (langs[r.language] = (langs[r.language] ?? 0) + 1));
+    const top = Object.entries(langs).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([l]) => l);
+    out.push(`GitHub since ${yearOf(gh.createdAt)}${first ? `; first own code in ${first}` : "; no code of their own yet"}${top.length ? `; mostly ${top.join(" and ")}` : ""}.`);
+    const recent = own.filter((r) => r.description).sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 2).map((r) => r.name);
+    if (recent.length) out.push(`Recent work: ${recent.join(", ")}.`);
+  } else out.push("No GitHub account to compare against yet.");
+  const off = checks.filter((c) => c.status === "warn" || c.status === "risk").map((c) => c.label.toLowerCase());
+  out.push(off.length ? `Worth asking about: ${off.join(", ")}.` : "Claims and GitHub line up so far.");
+  return out.join(" ");
 }
 
 // ---------- Verification questions ----------
@@ -330,7 +437,8 @@ export function buildIdentityReport(gh: GithubFacts | null, input: IdentityReque
   const headline = !known
     ? "Not enough to check yet"
     : { consistent: "Profile looks consistent", mixed: "A few things don't line up", inconsistent: "Strong signs this profile isn't theirs" }[level];
-  return { score, level, headline, checks, questions: verifyQuestions(checks, gh, st, input, text), ...sources };
+  const story = buildStory(gh, text, st, entries, checks);
+  return { score, level, headline, checks, questions: verifyQuestions(checks, gh, st, input, text), story, ...sources };
 }
 
 /** Fixture GitHub facts → the profile card's shape, so demo candidates work offline. */
