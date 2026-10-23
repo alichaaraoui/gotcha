@@ -14,7 +14,7 @@ const STYLES: { id: Gotcha["style"]; label: string; tip: string }[] = [
   { id: "own-code", label: "Their own work", tip: "Only the real author knows" },
   { id: "other", label: "Other", tip: "" },
 ];
-const MODEL_TINT: Record<string, string> = { "GPT-OSS 20B": "bg-[#d8d2f6]", "GPT-OSS 120B": "bg-[#e8c4e2]", "Qwen 3": "bg-[#f4ca8e]" };
+const MODEL_TINT: Record<string, string> = { "GPT-OSS 20B": "bg-[#d8d2f6]", "GPT-OSS 120B": "bg-[#e8c4e2]", "Qwen 3": "bg-[#f4ca8e]", "Claude (Opus 5.5)": "bg-[#f3d9c4]" };
 
 export default function Library() {
   const [tab, setTab] = useState<"bank" | "research">("bank");
@@ -156,7 +156,7 @@ function Research() {
               <span className="text-white/40 transition group-open:rotate-90">›</span>
             </summary>
             <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 {e.answers.map((a) => (
                   <div key={a.model} className="rounded-2xl border border-white/10 bg-black/20 p-4">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] text-slate-900 ${MODEL_TINT[a.model] ?? "bg-white"}`}>{a.model}</span>
