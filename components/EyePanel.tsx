@@ -15,7 +15,9 @@ export interface EyePanelHandle {
 
 type Box = { x0: number; y0: number; x1: number; y1: number };
 
-export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean }>(function EyePanel({ emphasize }, ref) {
+// `stream` (optional): the shared Zoom call (Person 1's useCallCapture). When given, tracking runs on the
+// candidate's face in the call, the source buttons are hidden, and we never stop its tracks (the call owns them).
+export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?: MediaStream | null }>(function EyePanel({ emphasize, stream: shared }, ref) {
   const { update } = useStore();
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -25,7 +27,7 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean }>(funct
   const faceBox = useRef<Box | undefined>();
   const lastUi = useRef(0);
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">("off");
-  const [source, setSource] = useState<"webcam" | "screen">("webcam");
+  const [source, setSource] = useState<"webcam" | "screen" | "call">("webcam");
   const [mode, setMode] = useState<GazeMode>("auto");
   const [ui, setUi] = useState<{ off: boolean; used: "gaze" | "head"; q: GazeQuality | null; face: boolean }>({ off: false, used: "gaze", q: null, face: false });
   const [error, setError] = useState("");
@@ -46,25 +48,34 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean }>(funct
     if (tracker.current) tracker.current.mode = mode;
   }, [mode]);
 
+  // Follow the shared call: start when it connects, stop when it goes away
+  useEffect(() => {
+    if (shared) begin(shared);
+    else if (source === "call") { shutdown(); setStatus("off"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared]);
+
   // Stop camera / screen share when leaving the Live Room
   useEffect(() => () => shutdown(), []);
 
   function shutdown() {
     tracker.current?.stop();
     recorder.current.stop();
-    stream.current?.getTracks().forEach((t) => t.stop());
+    if (stream.current && stream.current !== shared) stream.current.getTracks().forEach((t) => t.stop());
     tracker.current = null;
     stream.current = null;
   }
 
-  async function begin(src: "webcam" | "screen") {
+  async function begin(src: "webcam" | "screen" | MediaStream) {
     try {
+      shutdown();
       setError("");
       setStatus("loading");
-      setSource(src);
-      const s = src === "webcam" ? await EyeTracker.webcam() : await EyeTracker.screen();
+      const isCall = src instanceof MediaStream;
+      setSource(isCall ? "call" : src);
+      const s = isCall ? src : src === "webcam" ? await EyeTracker.webcam() : await EyeTracker.screen();
       stream.current = s;
-      s.getVideoTracks()[0]?.addEventListener("ended", () => { shutdown(); setStatus("off"); });
+      if (!isCall) s.getVideoTracks()[0]?.addEventListener("ended", () => { shutdown(); setStatus("off"); });
       video.current!.srcObject = s;
       await video.current!.play();
       const t = new EyeTracker();
@@ -148,11 +159,11 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean }>(funct
             <option value="gaze">Force gaze</option>
             <option value="head">Head pose only</option>
           </select>
-          <button className="rounded border border-slate-700 px-1.5 py-0.5 hover:bg-slate-800" onClick={() => { shutdown(); setStatus("off"); }}>Stop</button>
+          {source !== "call" && <button className="rounded border border-slate-700 px-1.5 py-0.5 hover:bg-slate-800" onClick={() => { shutdown(); setStatus("off"); }}>Stop</button>}
         </div>
       )}
-      {status === "on" && source === "screen" && <p className="text-[11px] text-slate-500">Tip: Zoom speaker view keeps the candidate's face big enough for gaze.</p>}
-      {status !== "on" && (
+      {status === "on" && source !== "webcam" && <p className="text-[11px] text-slate-500">Tip: Zoom speaker view keeps the candidate's face big enough for gaze.</p>}
+      {status !== "on" && !shared && (
         <div className="flex gap-2">
           <button className="btn-ghost text-xs" disabled={status === "loading"} onClick={() => begin("webcam")}>Use webcam</button>
           <button className="btn-ghost text-xs" disabled={status === "loading"} onClick={() => begin("screen")}>Capture Zoom window</button>

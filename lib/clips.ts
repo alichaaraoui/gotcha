@@ -27,7 +27,8 @@ export class ClipRecorder {
 
   start(stream: MediaStream) {
     if (typeof MediaRecorder === "undefined") return; // snapshots still work
-    this.stream = stream;
+    // Video only: the shared Zoom call also carries tab audio, which a video-only mimeType would reject
+    this.stream = new MediaStream(stream.getVideoTracks());
     this.mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
     this.slots = [{ rec: null, startedAt: 0 }, { rec: null, startedAt: 0 }];
     this.run(this.slots[0]);

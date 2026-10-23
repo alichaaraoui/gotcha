@@ -58,7 +58,7 @@ function buildDataset(session: Session, questions: Question[]) {
   });
   // Clips and snapshots only live in this browser; keep the export small and portable.
   const flags = session.flags.map(({ clipUrl, snapshot, ...f }) => ({ ...f, hadClip: !!clipUrl, hadSnapshot: !!snapshot }));
-  return { schema: "unscripted.dataset/v1", exportedAt: new Date().toISOString(), sessionId: session.id, trackId: session.trackId, candidate: session.profile?.login ?? null, rows, session: { ...session, flags } };
+  return { schema: "gotcha.dataset/v1", exportedAt: new Date().toISOString(), sessionId: session.id, trackId: session.trackId, candidate: session.profile?.login ?? null, rows, session: { ...session, flags } };
 }
 
 // ---------- page ----------
@@ -78,7 +78,7 @@ export default function Report() {
     const blob = new Blob([JSON.stringify(buildDataset(session, questions), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `unscripted-${session.id}.json`;
+    a.download = `gotcha-${session.id}.json`;
     a.click();
   };
 
@@ -98,7 +98,6 @@ export default function Report() {
         <h1 className="text-2xl font-semibold">Interview report · {session.profile?.name ?? session.profile?.login ?? "candidate"}</h1>
         <span className="text-sm text-slate-400">Peak risk {maxRisk}% · {session.flags.length} flags · {session.events.length} answers</span>
         <div className="no-print ml-auto flex items-center gap-2">
-          <button className="btn-ghost" onClick={() => window.print()}>Save as PDF</button>
           <button className="btn-ghost" onClick={exportDataset}>Export dataset (JSON)</button>
           <button className="btn-primary" onClick={() => { finishInterview(); setSaved(true); }}>Save verdicts to memory</button>
         </div>

@@ -6,7 +6,7 @@ import { NavTabs } from "@/components/NavTabs";
 
 const outfit = Outfit({ subsets: ["latin"], weight: ["300", "400", "500", "600"], variable: "--font-sans" });
 
-export const metadata = { title: "Unscripted", description: "Live interview co-pilot for recruiters" };
+export const metadata = { title: "GotCha", description: "Live interview co-pilot for recruiters" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -30,7 +30,7 @@ export default function Insights() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-semibold">What Unscripted has learned</h1>
+        <h1 className="text-2xl font-semibold">What GotCha has learned</h1>
         <span className="text-sm text-slate-400">{history.length} past interviews{saved > 0 ? ` (${saved} from you)` : ""}</span>
       </div>
 

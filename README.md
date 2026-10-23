@@ -1,4 +1,4 @@
-# Unscripted: live interview co-pilot
+# GotCha: live interview co-pilot
 
 A recruiter side panel that spots AI-assisted answers in live technical interviews and suggests what to ask next. The tool suggests; the recruiter decides. No auto-rejection.
 
