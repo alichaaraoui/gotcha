@@ -5,10 +5,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        clear: "#22c55e",
-        watch: "#eab308",
-        warn: "#f97316",
-        flag: "#ef4444",
+        clear: "#34b37e",
+        watch: "#e3a524",
+        warn: "#ec7a3c",
+        flag: "#e5484d",
       },
     },
   },

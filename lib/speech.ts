@@ -7,20 +7,37 @@ import type { WordStamp } from "@/lib/types";
 export function useSpeech() {
   const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
+  const [error, setError] = useState<string>();
   const words = useRef<WordStamp[]>([]);
   const finalText = useRef("");
+  const latest = useRef(""); // final + in-progress text, so stopping mid-sentence keeps the last words
   const rec = useRef<any>(null);
 
   // Checked after mount so server and client render the same first frame
   const [supported, setSupported] = useState(false);
   useEffect(() => setSupported("webkitSpeechRecognition" in window || "SpeechRecognition" in window), []);
 
+  /** Ask for the mic up front so Chrome's permission prompt never eats into an answer's timing. */
+  const [micReady, setMicReady] = useState<boolean | null>(null);
+  const prepare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMicReady(true);
+    } catch {
+      setMicReady(false);
+      setError("Microphone blocked: allow it in the address bar, then reload.");
+    }
+  }, []);
+
   const start = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
     words.current = [];
     finalText.current = "";
+    latest.current = "";
     setTranscript("");
+    setError(undefined);
     const r = new SR();
     r.continuous = true;
     r.interimResults = true;
@@ -32,12 +49,23 @@ export function useSpeech() {
         if (e.results[i].isFinal) finalText.current += t + " ";
         else interim += t;
       }
-      const full = (finalText.current + interim).trim();
+      const full = (finalText.current + interim).replace(/\s+/g, " ").trim();
       // Stamp each newly seen word with "now" (interim results arrive ~word by word)
       const ws = full.split(/\s+/).filter(Boolean);
       const now = Date.now();
       for (let i = words.current.length; i < ws.length; i++) words.current.push({ w: ws[i], t: now });
+      latest.current = full;
       setTranscript(full);
+    };
+    r.onerror = (e: any) => {
+      // Common: "not-allowed" (mic blocked), "no-speech" (silence), "network" (Chrome's speech service unreachable)
+      if (e.error === "no-speech") return;
+      setError(
+        e.error === "not-allowed" ? "Microphone blocked: allow it in the address bar, then try again."
+        : e.error === "network" ? "Chrome's speech service is unreachable. Check Wi-Fi or use replay mode."
+        : `Speech error: ${e.error}`
+      );
+      if (e.error === "not-allowed" || e.error === "network") { rec.current = null; setListening(false); }
     };
     r.onend = () => {
       // Chrome stops after silence; restart while we still want to listen
@@ -53,8 +81,8 @@ export function useSpeech() {
     rec.current = null;
     r?.stop();
     setListening(false);
-    return { transcript: (finalText.current || transcript).trim(), words: [...words.current] };
-  }, [transcript]);
+    return { transcript: latest.current.trim(), words: [...words.current] };
+  }, []);
 
   /** Replay mode: feed a scripted answer word by word at a given speed. */
   const replay = useCallback((text: string, delayMs: number, wpm: number, onDone: (t: string, w: WordStamp[]) => void) => {
@@ -77,5 +105,5 @@ export function useSpeech() {
     setTimeout(tick, delayMs);
   }, []);
 
-  return { supported, transcript, listening, start, stop, replay, setTranscript };
+  return { supported, transcript, listening, error, micReady, prepare, start, stop, replay, setTranscript };
 }
