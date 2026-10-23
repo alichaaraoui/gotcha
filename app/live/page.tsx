@@ -209,10 +209,12 @@ export default function Live() {
     setToast("Moment flagged for the report");
   }, [answering, lastAnswered, current, store]);
 
-  const askOwn = async (text: string) => {
+  const askOwn = async (text: string, hint?: string) => {
     const r: QuestionsResponse = await fetch("/api/questions", { method: "POST", body: JSON.stringify({ profile: session.profile, trackId: session.trackId, custom: text }) }).then((x) => x.json());
-    store.addQuestions(r.personalized);
-    setCurrentId(r.personalized[0].id);
+    const q = { ...r.personalized[0], ...(hint ? { goodAnswerHint: hint } : {}) };
+    store.addQuestions([q]);
+    setCurrentId(q.id);
+    setSwitched(undefined);
     setToast("Your question is up next");
   };
 
@@ -380,8 +382,10 @@ export default function Live() {
           last={lastAnswered ? { question: lastAnswered, answer: session.events.find((e) => e.questionId === lastAnswered.id)?.transcript ?? "" } : undefined}
           disabled={!!answering}
           onAsk={(q) => { store.addQuestions([q]); setCurrentId(q.id); setSwitched(undefined); setToast("Up next. Read it from the card above"); }}
-          onAskOwn={askOwn}
+          onAskOwn={(t) => askOwn(t)}
           onClaim={pinClaim}
+          gotchas={store.gotchas}
+          onAskGotcha={(g) => askOwn(g.text, g.realAnswer || undefined)}
         />
 
         {/* Settings, out of the way */}

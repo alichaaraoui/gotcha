@@ -50,6 +50,22 @@ export interface Question {
   repoRef?: string; // personalized from GitHub
   followUps?: string[]; // ids for "Go deeper"
   why?: string; // for suggested ideas: what this question reveals, in a few words
+  aiAnswers?: AiAnswer[]; // the same question answered by several AI models (research library)
+}
+
+export interface AiAnswer {
+  model: string; // e.g. "GPT-OSS 120B"
+  text: string;
+}
+
+// Sarah's private bank of off-script questions (her Google Doc, digitized)
+export interface Gotcha {
+  id: string;
+  text: string;
+  topic: string;
+  style: "curveball" | "constraint-change" | "knowledge-boundary" | "own-code" | "other";
+  realAnswer: string; // what a genuine answer sounds like
+  createdAt: number;
 }
 
 export interface Stage {

@@ -63,9 +63,15 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
   const baseWpm = r.baseline?.wpm ?? 135;
   out.push({ method: "steady_rate", value: clamp((rate - baseWpm) / 40 + (rate > 145 ? 0.3 : 0)), why: `${rate.toFixed(0)} words/min (their normal: ${baseWpm.toFixed(0)})` });
 
-  // 7 AI shadow answer similarity
-  const sim = similarity(r.event.transcript, r.question.shadowAnswer);
-  out.push({ method: "ai_similarity", value: clamp(sim * 1.4), why: `${(sim * 100).toFixed(0)}% overlap with what an AI would say` });
+  // 7 Similarity to AI answers: the shadow answer plus every model in the research library
+  const candidates = [{ model: "the AI answer", text: r.question.shadowAnswer }, ...(r.question.aiAnswers ?? [])];
+  const best = candidates.map((c) => ({ model: c.model, sim: similarity(r.event.transcript, c.text) })).sort((a, b) => b.sim - a.sim)[0];
+  const sim = best?.sim ?? 0;
+  out.push({
+    method: "ai_similarity",
+    value: clamp(sim * 1.4),
+    why: candidates.length > 1 ? `${(sim * 100).toFixed(0)}% overlap with ${best.model}'s answer (closest of ${candidates.length} AI answers)` : `${(sim * 100).toFixed(0)}% overlap with what an AI would say`,
+  });
 
   // 8 LLM style (Groq when available, else heuristic)
   const style = llmStyleOverride ?? (() => {

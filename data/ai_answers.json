@@ -1,0 +1,886 @@
+{
+  "be-w1": {
+    "question": "Tell me about the project you're most proud of from the last year.",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "Qwen 3",
+        "text": "I refactored our legacy monolith into microservices, specifically isolating the payment processing pipeline. It was a massive undertaking because we couldn’t afford any downtime. I designed a strangler fig pattern to gradually migrate traffic, ensuring zero data loss. The result was a forty percent reduction in latency and, more importantly, it gave the team autonomy to deploy features independently. Seeing the ops team stop firefighting at 3 AM and instead focus on scaling was incredibly rewarding. It proved that careful architectural planning directly impacts business reliability and team happiness."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "The project I’m most proud of this past year was a real‑time analytics dashboard we built for our e‑commerce platform. I led a small team to redesign the data pipeline, moving from batch jobs to a Kafka‑based streaming architecture, which cut latency from minutes to under two seconds. I also implemented a React front end with dynamic visualizations that let product managers drill down into sales trends instantly. Seeing the system go live, handling thousands of events per second, and watching the business make faster decisions was incredibly rewarding."
+      },
+      {
+        "model": "GPT-OSS 20B",
+        "text": "The project I’m most proud of from last year was a real‑time inventory management system I built for a mid‑size retailer. I designed a microservice architecture using Spring Boot and Docker, integrated it with Kafka for event‑driven updates, and set up a PostgreSQL database with read replicas for high availability. I also implemented a React dashboard that visualizes stock levels, predicts reorder points with a simple ML model, and sends automated alerts. The system cut manual stock checks by 70 % and reduced out‑of‑stock incidents by 40 %."
+      }
+    ]
+  },
+  "be-w2": {
+    "question": "What's your go-to language and why?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d say Python is my go‑to language. It’s expressive, which lets me prototype quickly, and its extensive ecosystem—NumPy, Pandas, Flask, FastAPI—covers almost every domain I work in, from data science to web services. The syntax is clean, so I can focus on solving problems rather than wrestling with boilerplate. Plus, the community is huge, so I can always find a library or a solution to a tricky issue. In short, Python gives me speed, flexibility, and a solid foundation for any project."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "My go‑to language is Python because it lets me turn ideas into working code quickly without wrestling with boilerplate. The syntax is clean, the standard library is extensive, and the ecosystem—from data‑science tools to web frameworks—covers almost any problem I face. I also appreciate its readability, which makes collaborating with teammates smooth, and its dynamic nature lets me prototype and iterate fast while still scaling to production‑grade systems when needed."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I primarily use Python for its readability and rapid development cycle, especially in data-centric or backend services. However, I’m equally comfortable with Go for high-performance microservices where concurrency and low latency are critical. My preference really depends on the problem domain. I choose the tool that best fits the team’s existing stack and the specific performance requirements, rather than sticking dogmatically to one language. It’s about delivering robust, maintainable solutions efficiently."
+      }
+    ]
+  },
+  "be-w3": {
+    "question": "Walk me through what you did yesterday at work or school.",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Yesterday I focused on stabilizing our payment microservice. I started by reviewing the recent CI failures, pinpointing a race condition in the order‑processing queue. I rewrote the queue handler to use a transactional lock and added idempotency checks for duplicate messages. After that, I updated the integration tests to cover edge cases with high concurrency. I ran the full test suite, fixed a few flakiness bugs, and merged the changes. Then I documented the new lock logic in our design wiki and set up a monitoring alert for queue latency."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Yesterday I started by reviewing the pull requests that were waiting for feedback, leaving comments on a few edge‑case bugs and approving the rest. Then I spent a couple of hours refactoring the data‑processing module we’ve been struggling with, extracting the parsing logic into a reusable service and adding unit tests to cover the new paths. After lunch I paired with a teammate to debug a flaky integration test, we traced the issue to a timing race and added a small synchronization guard. I wrapped up by updating the sprint board, moving completed tickets to done and writing a brief summary for the daily stand‑up."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "Yesterday, I spent the morning refactoring our legacy authentication service to improve performance. I identified a bottleneck in the session validation logic and implemented a more efficient caching strategy, which reduced response times by about thirty percent. In the afternoon, I participated in code reviews and assisted a junior developer with a complex SQL query. We also held a quick stand-up to discuss our sprint progress, ensuring everyone was aligned on our next steps for the week. It was a productive mix of deep work and collaboration."
+      }
+    ]
+  },
+  "be-c1": {
+    "question": "How would you design caching for an API that gets 10,000 requests a second?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by putting a distributed cache in front of the API, using something like Redis or Memcached, to hold the most frequently requested data. I’d set short TTLs for volatile data and longer ones for stable data, and use a cache‑aside pattern so the API only hits the database when a miss occurs. I’d also shard the cache by key prefix and add a cache‑busting strategy for updates, ensuring that read traffic is served quickly while keeping data fresh."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "To handle a million‑plus hits per minute I’d put a distributed in‑memory cache like Redis or Memcached in front of the service, sharding the keyspace so no single node becomes a bottleneck. I’d cache the raw response for the most common query parameters with a short TTL—maybe a few seconds—to keep data fresh while still absorbing bursts. For less frequent queries I’d fall back to the database, and I’d add a write‑through or write‑behind layer so updates invalidate or refresh the relevant keys automatically. Monitoring cache hit rates and scaling nodes horizontally ensures we stay under latency targets even at 10 k RPS."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I'd start with a multi-layer approach. First, I'd use a distributed cache like Redis or Memcached to handle the bulk of reads, leveraging consistent hashing to prevent hotspots. For anything highly predictable, I'd implement CDN edge caching to reduce latency and origin load. Critical to this is a robust invalidation strategy; I'd use event-driven invalidation rather than short TTLs to maintain consistency. Finally, I'd monitor cache hit rates aggressively and implement circuit breakers to prevent cascading failures if the cache layer becomes overwhelmed."
+      }
+    ]
+  },
+  "be-c2": {
+    "question": "Tell me about a bug that took you more than a day to find.",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I once spent a whole day chasing a subtle memory leak in a data‑processing pipeline. The bug was triggered only when the service handled a burst of high‑volume requests, causing a reference to a large in‑memory cache to persist after the request finished. I started by profiling the heap, but the leak wasn’t obvious because the object was referenced through a weak map that was cleared only during GC. After adding detailed logging around cache eviction and stepping through the request lifecycle, I discovered that a callback was holding onto the cache key. Removing that callback and properly nulling the reference fixed the leak. The experience reminded me that sometimes the most elusive bugs hide in the interaction between async callbacks and memory management."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I once spent an entire weekend hunting a race‑condition that only showed up intermittently in our payment microservice. The logs looked normal, but under load a transaction would occasionally be marked as completed twice, causing duplicate charges. I added detailed tracing and realized the problem was a shared in‑memory cache that wasn’t being locked correctly when multiple threads updated the same order state. The fix was to replace the cache with an atomic operation backed by the database, and after that the issue disappeared."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I once tracked down a race condition in our microservice that only appeared under high load. Users reported occasional data corruption, but everything looked fine locally. I spent over twenty hours adding detailed logging and tracing memory usage. Finally, I realized two threads were accessing a shared cache without proper locking. It was a subtle concurrency issue where the GIL wasn’t protecting our custom C extension. Fixing it required implementing explicit mutexes. That experience taught me the value of deterministic testing and the importance of understanding low-level language mechanics when debugging distributed systems."
+      }
+    ]
+  },
+  "be-c3": {
+    "question": "When would you pick SQL over NoSQL? Use something you've actually built.",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I chose SQL for a customer‑order platform I built for a retail client. The data model was highly relational: customers, orders, order lines, and inventory. We needed ACID guarantees for financial transactions, complex joins to generate real‑time sales reports, and strict schema enforcement to avoid data corruption. PostgreSQL’s robust transaction support, indexing, and analytical functions made it the natural fit, whereas a NoSQL solution would have added unnecessary complexity for those relational requirements."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d reach for SQL when the data model is relational and I need strong consistency, complex joins, and transactional guarantees. In a project I led last year—a multi‑tenant SaaS billing system—I stored invoices, customers, and payment schedules in PostgreSQL because each invoice had to reference a specific customer, tax rules required precise aggregations, and we couldn’t afford eventual consistency glitches. The relational schema let me write clear SQL joins and enforce ACID transactions, which a NoSQL store would have made messy and error‑prone."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I’d choose SQL whenever data integrity and complex relationships are non-negotiable. For instance, when I built a multi-tenant billing platform, I used PostgreSQL because financial transactions demand strict ACID compliance and referential integrity. We needed to guarantee that every invoice linked correctly to a customer and payment record, even during high concurrency. NoSQL’s eventual consistency would have introduced unacceptable risk of duplicate charges or orphaned data. SQL’s robust transaction handling and relational structure made that complex, auditable logic much simpler to maintain and trust."
+      }
+    ]
+  },
+  "be-d1": {
+    "question": "Your cache just served stale prices to 5% of users. What do you check first?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d first look at the cache key logic, because that’s the most common culprit when stale data surfaces for a subset of users. I’d verify that the key incorporates all relevant request parameters and that it’s being generated consistently. Next, I’d check the cache invalidation trigger—ensuring that the update event fires for every price change and that the TTL is set appropriately. Finally, I’d review the cache hit/miss logs to see if the stale entries are being served from a stale replica or due to eventual consistency delays."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "First, I’d verify the cache‑invalidation logic—make sure the TTL or version tag is being updated when prices change and that the invalidation signal actually reaches all nodes. I’d look at the recent price‑update events in the logs to see if any errors occurred while publishing the update, then check whether the affected servers have the latest config or if they’re stuck on an old replica. In short, I’d confirm the invalidation path is working end‑to‑end before digging deeper."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "First, I’d verify if the stale data is actually a correctness issue or just expected eventual consistency. Assuming it’s a bug, I’d immediately check the cache invalidation pipeline. Specifically, I’d look for recent failures in the event stream or publisher that notifies the cache of price changes. If the publisher is healthy, I’d inspect the cache TTLs and see if a recent deployment accidentally extended them or if a specific hot key is getting stuck due to a race condition during updates."
+      }
+    ]
+  },
+  "be-d2": {
+    "question": "How did you handle database migrations on a live system?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I tackled live migrations by first creating a reversible migration script that added a new column with a default value, so the existing application could keep working. I ran it during a low‑traffic window and monitored the database’s performance with real‑time metrics. Once I confirmed no issues, I rolled out the schema change to production. Afterwards, I updated the ORM models and ran a full integration test to ensure the new column behaved as expected, all without any downtime."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I treated migrations as a carefully staged operation. First I added new columns with default values that allowed the existing code to keep running, then I deployed the application changes that started using those columns. Once the new version was stable I ran a background job to back‑fill any missing data, and finally I executed a short, locked‑down migration to drop the old columns or rename tables. By keeping each step backward‑compatible and monitoring the rollout, I avoided downtime and could roll back instantly if anything went wrong."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I treated migrations as a zero-downtime operation using an expand-contract pattern. First, I’d add the new column or table to the schema without touching existing code. Next, I’d deploy application updates to write to both the old and new structures simultaneously. Once the data was fully backfilled and verified, I’d switch reads to the new schema. Finally, I’d clean up the old columns. This approach allowed us to roll back instantly if issues arose, ensuring stability for our user base throughout the entire process."
+      }
+    ]
+  },
+  "be-d3": {
+    "question": "What would you log differently next time, after that bug?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "After that bug I would add a couple of things to my logs. First, I’d capture the full request payload and the exact timestamp of the failure, so I can replay the exact scenario if needed. Second, I’d log the user’s session ID and any relevant context like feature flags or environment variables, so I can see if the issue is isolated to a particular configuration. Finally, I’d add a correlation ID that ties the client’s request to the backend trace, making it easier to follow the request end‑to‑end."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "If I ran into that bug again, I’d make sure my logs capture the exact input values and the state of any relevant flags right before the failure point, plus timestamps and thread identifiers. I’d also add a clear, unique error code and log the stack trace at a higher severity level. Finally, I’d sprinkle in a few sanity‑check messages around the edge cases that triggered the issue, so the next time I can pinpoint the root cause without digging through ambiguous output."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "Honestly, I’d focus heavily on context. Instead of just logging error messages, I’d capture the specific state variables and request IDs right before the failure. I’d also ensure our timestamps are consistent across services so tracing the actual sequence of events isn’t a guessing game. Basically, I want the logs to tell the whole story without me having to piece together fragments from five different systems. That way, debugging feels like reading a narrative rather than solving a cryptic puzzle."
+      }
+    ]
+  },
+  "be-p1": {
+    "question": "In your repo your main project, why did you structure it the way you did? What would you change today?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I organized the repo around a clear separation of concerns: the core library lives in the `src` folder, the CLI wrapper in `cli`, and the tests in `tests`. That keeps the build pipeline simple and makes it easy to run `npm test` without pulling in unrelated code. I also used a monorepo style with a single `package.json` so that dependencies stay in sync. If I were doing it today, I’d split the library into its own npm package and publish it, so that downstream projects can depend on a stable version and the repository would only host the CLI and integration tests. This would also give me a clearer versioning strategy and make the code easier to reuse."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I organized the main project around feature modules because it let me keep related code together, made the dependency graph shallow, and simplified onboarding for new team members. Each module has its own tests, CI pipeline, and clear boundaries, which helped us ship features quickly without stepping on each other’s toes. If I were to redo it today, I’d introduce a stricter domain‑driven folder layout, pull shared utilities into a core library, and add a monorepo tool to automate cross‑module versioning, which would tighten consistency and reduce duplication."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I structured my main project using a modular monolith approach because it simplified deployment and debugging while keeping the codebase organized by feature. I put clear boundaries between services to ensure loose coupling. If I were starting today, I would probably extract the notification service into its own microservice earlier, as it grew quite large. I’d also invest more time upfront in designing a robust event-driven architecture to handle asynchronous workflows more gracefully, reducing the need for complex polling mechanisms later."
+      }
+    ]
+  },
+  "be-p2": {
+    "question": "Same caching design, but now writes are 50% of traffic. Change your answer.",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "In this scenario where writes now account for half the traffic, I’d still use a write‑through cache but add a write‑back policy for high‑frequency updates. I’d keep the cache in memory for speed, but batch writes to the database in micro‑transactions to reduce lock contention. I’d also introduce a second, slower cache layer for read‑heavy data, ensuring that write amplification doesn’t degrade performance. This hybrid approach balances consistency, throughput, and latency."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure, with writes now making up half of the traffic I’d shift the cache to a write‑through pattern backed by a distributed in‑memory store like Redis. Every update goes straight to the database and the cache is refreshed atomically, so reads always see the latest state without stale data. I’d also add a short TTL to guard against any edge‑case inconsistencies and use sharding to spread the load. This keeps latency low for reads while handling the higher write volume reliably."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "With writes at fifty percent, I’d shift from a cache-aside to a write-through pattern. This ensures data consistency by updating the cache and database simultaneously, eliminating stale reads. However, this increases write latency, so I’d implement an async write-behind queue to absorb spikes and keep user-facing responses fast. I’d also monitor invalidation storms closely, introducing request coalescing to prevent cache thrashing. The goal is balancing immediate read consistency with sustainable write performance, ensuring the system doesn’t become a bottleneck under heavy modification loads."
+      }
+    ]
+  },
+  "be-p3": {
+    "question": "Quick one: what's 'git status' for? Now: how does git store a commit internally?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "`git status` shows me the current state of my working directory: which files are staged, which are modified, and which are untracked. It’s a quick sanity check before I commit. Internally, a commit is a blob that contains metadata—author, timestamp, message, tree hash—and a tree object that references all the files and sub‑trees in that snapshot. The commit itself is stored as a compressed, hashed object in the `.git/objects` directory, keyed by its SHA‑1."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I use git status to see where my working tree stands—it tells me which files are staged, which have changes not yet staged, and which are untracked, so I know what will go into the next commit. Internally a commit is a lightweight object that stores a snapshot of the entire tree of files, a pointer to its parent commit(s), the author and committer metadata, a timestamp and a commit message. Git compresses the snapshot into a blob and tree objects and records the commit’s SHA‑1 hash, which uniquely identifies that state."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "So, `git status` is my go-to for seeing where I stand. It tells me which files have been modified, staged, or are untracked, giving me a clear snapshot of my working directory versus the index. As for internals, when I commit, Git doesn't store the file itself. Instead, it hashes the file's content to create a Blob object. It then creates a Tree object pointing to those Blobs, and finally, a Commit object that references that specific Tree, along with metadata like the author and message."
+      }
+    ]
+  },
+  "be-p4": {
+    "question": "Have you used the --strict-pool flag in Redis 7's cluster mode? How did it behave?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Yes, I’ve used the `--strict-pool` flag when running Redis 7 in cluster mode. It forces the client pool to enforce strict adherence to the cluster’s slot mapping, so every command is routed to the correct node without any fallback to the master. When I enabled it, I noticed the cluster became stricter about slot ownership; commands that targeted a node that didn’t own the slot now fail immediately instead of being redirected. This reduces latency for valid requests but increases error rates for mis‑directed ones, so I only turn it on for production workloads where I’m sure my clients are correctly configured."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Yes, I’ve worked with the --strict-pool flag in Redis 7 when running a cluster. Enabling it forces the client library to use a single connection pool per node, rather than sharing pools across the whole cluster. In practice I noticed that it makes connection handling more deterministic—each slot’s traffic stays on its dedicated pool, which can reduce cross‑node contention and make latency more predictable. The trade‑off is a slightly higher number of open sockets, but for our workload the stability gains were worth it."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I haven’t specifically used the `--strict-pool` flag in Redis 7 cluster mode, as that isn’t a standard Redis configuration parameter I’ve encountered in production environments. Typically, we tune cluster behavior using flags like `--cluster-enabled` or `--cluster-require-full-coverage`. If you’re referring to a specific internal tool or a newer, niche feature, I’d need a bit more context to speak to its exact behavior. However, I’m very comfortable managing connection pooling and cluster topology health in Redis, so I’d adapt quickly to any new validation mechanisms."
+      }
+    ]
+  },
+  "be-x1": {
+    "question": "What do you want to get better at in the next year?",
+    "topic": "Backend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "In the next year I want to sharpen my cloud architecture skills, especially around serverless and micro‑service patterns. I plan to dive deeper into Kubernetes and observability, so I can design systems that are both resilient and cost‑efficient. I’ll also focus on improving my data‑driven decision making by learning advanced analytics and A/B testing frameworks. Finally, I’m eager to mentor junior teammates, passing on what I learn and building a stronger engineering culture."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "In the coming year I’m focused on deepening my expertise in distributed systems and cloud-native architecture. I want to become more fluent with Kubernetes, service meshes, and observability tooling so I can design and run resilient, scalable services with minimal friction. At the same time I’m committing to sharpening my data‑engineering skills—building efficient pipelines, mastering streaming platforms, and applying modern data‑ops practices. By coupling stronger infrastructure knowledge with robust data handling, I’ll be able to deliver end‑to‑end solutions that move the business faster."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "Honestly, I want to deepen my understanding of system design at scale. While I’m comfortable building solid microservices, I want to get sharper at making trade-offs around data consistency, latency, and cost in complex distributed environments. I’m starting to read more post-mortems and design docs from major tech companies to see how they handle these problems. I think this will make me a more effective senior engineer who can guide architectural decisions, not just implementation details, which is exactly the kind of impact I want to have on your team."
+      }
+    ]
+  },
+  "fe-w1": {
+    "question": "What's a website or app whose interface you love, and why?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I really admire the interface of Notion. It feels like a blank canvas that lets me organize everything—notes, tasks, databases—without feeling cluttered. The drag‑and‑drop is intuitive, and the way it collapses or expands sections keeps the page readable. I love how the same layout works for a quick grocery list or a complex project roadmap. It’s clean, flexible, and feels like a personal workspace that grows with me."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’m really drawn to the interface of Notion. It feels clean and flexible, with a minimal color palette that lets the content stand out, and the sidebar navigation is intuitive—click, drag, and everything reshapes instantly. The real‑time collaboration feels buttery smooth, and the use of whitespace makes complex pages feel approachable rather than cluttered. Plus, the way it blends text, databases, and media in a single canvas lets me organize thoughts without ever switching tools, which is exactly the kind of seamless experience I aim to build."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I genuinely love the interface of Apple Music. It feels incredibly intuitive because it prioritizes content over clutter. The design relies on generous whitespace and high-quality album art, which makes browsing feel like flipping through a magazine rather than navigating a database. The haptic feedback on the iOS app is also spot on, giving tactile confirmation that makes interactions feel premium. It’s a great example of how reducing visual noise and focusing on a single, clear action per screen creates a seamless, delightful user experience without requiring any onboarding."
+      }
+    ]
+  },
+  "fe-w2": {
+    "question": "React, Vue or something else, and why?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d choose React for most projects because its component model and virtual DOM give me the flexibility to build highly interactive UIs with a predictable data flow. The ecosystem is huge—state libraries like Redux or Recoil, routing, testing utilities—so I can pick the right tool for each problem. Vue is great for rapid prototyping and smaller teams, but when scaling to complex, enterprise‑grade applications, React’s maturity, community support, and performance tuning make it the safer, more future‑proof choice."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I tend to reach for React because its component model and ecosystem give me the flexibility to build both small widgets and large applications without sacrificing performance. The virtual DOM and hooks let me manage state declaratively, and the huge community means I always have reliable libraries and tooling at hand. Vue is elegant for quick prototypes, but I find React’s composability and mature ecosystem align better with the complex, scalable products I usually work on, so it’s my go‑to choice."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I’d actually go with Vue. It strikes the perfect balance between simplicity and power. The single-file components keep my code organized and intuitive, which really speeds up development. Plus, the reactivity system is incredibly easy to grasp, so I can spend less time fighting the framework and more time building features. It’s lightweight, easy to maintain, and has a great ecosystem. I think it lets me deliver high-quality user experiences without the steep learning curve that often comes with other major frameworks."
+      }
+    ]
+  },
+  "fe-c1": {
+    "question": "A page feels slow on phones. How do you find out why?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "When a page feels slow on phones, I start by opening the mobile device in Chrome and turning on DevTools. I enable the “Network” panel and reload the page to see which resources take the longest to download. I also use the “Performance” tab to record a session, looking for long scripting or rendering tasks. If the slowdown is on the server side, I’ll check the backend logs and database queries. This process pinpoints whether it’s a bandwidth, code, or server issue."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When a page feels sluggish on mobile I start by reproducing the issue on a device or emulator, then open the browser’s performance tools. I record a timeline while I interact with the page, looking for long main‑thread tasks, layout thrashing, or large paint times. I check the network tab for slow resources or excessive payloads, and I audit the JavaScript bundle for unused code and heavy libraries. I also profile memory usage to catch leaks, then prioritize fixing the biggest bottlenecks—usually reducing JavaScript work, optimizing images, and leveraging lazy loading or caching."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I start by opening Chrome DevTools on a real device or using device emulation to inspect the Network tab. I look for large, unoptimized images or fonts that are blocking rendering. Next, I check the Performance tab to identify long tasks or layout shifts. I also review the JavaScript bundle size to see if I’m shipping unnecessary code. After gathering this data, I prioritize fixes like lazy loading, code splitting, and image compression, then verify the improvements with Lighthouse and real-user monitoring to ensure the experience is actually faster for users."
+      }
+    ]
+  },
+  "fe-c2": {
+    "question": "How do you manage state that many components need?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I keep state in a single source of truth and let components subscribe to it. In practice I use a context or a global store, so the data lives in one place and any component that needs it can read or dispatch updates. When a component changes the state, the store emits a change event and only the components that depend on the affected slice re-render. This keeps the data consistent and avoids prop drilling."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I usually handle shared state by lifting it up to the nearest common ancestor or, for larger apps, by introducing a dedicated store using something like Redux or the Context API. I keep the state immutable so updates are predictable, and I memoize selectors to avoid unnecessary renders. When the data is truly global—like user authentication or theme—I put it in a top‑level provider so any component can subscribe without prop‑drilling. This keeps the UI consistent and the codebase maintainable."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "For shared state, I usually start with React’s Context API for simple, global data like user preferences or theme settings. If the logic gets complex, I reach for a dedicated store like Zustand or Redux Toolkit. This keeps updates predictable and lets me memoize components to prevent unnecessary re-renders. I also try to keep state as local as possible, lifting it up only when necessary. This approach balances performance with maintainability, ensuring the app remains scalable without introducing unnecessary architectural overhead."
+      }
+    ]
+  },
+  "fe-d1": {
+    "question": "The slow part turns out to be a huge list. What do you do?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by looking at why that list is so large. Often the data set contains duplicate or unnecessary entries, or the algorithm is pulling more records than it needs. I’d add a filter to fetch only the fields I really need, maybe use a generator or stream so I don’t load everything into memory at once. If the list is still huge, I’d consider paginating the query or caching the results so future calls are faster."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When I discover that a massive list is the bottleneck, I first profile to confirm it’s the real issue, then I look at ways to reduce its size or access cost. I might switch to a more appropriate data structure like a set or a dictionary if I only need look‑ups, or use lazy evaluation with generators so I only create items when needed. If the list must stay huge, I’ll paginate or stream it, or move the heavy work off the critical path into a background job or cache the results. This usually cuts the latency dramatically."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "First, I’d profile the code to confirm the list is actually the bottleneck. Then, I’d check if I can avoid materializing the entire list in memory by using generators or lazy evaluation. If I need to process it, I’d look into parallelizing the work with a thread pool or process pool, keeping in mind the GIL for Python. I might also consider batching operations to reduce overhead. If the data is static, I’d see if I can precompute or cache results. The goal is to reduce memory pressure and leverage concurrent execution to speed things up without changing the core logic."
+      }
+    ]
+  },
+  "fe-d2": {
+    "question": "Tell me about a time state got out of sync and users saw wrong data.",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I once worked on a real‑time analytics dashboard for a financial app. The front‑end was pulling data from a caching layer that refreshed every minute, while the back‑end database was updated instantly via a message queue. When a user performed a high‑frequency trade, the cache still served the old balance for about 30 seconds, so the user saw an incorrect account total. I traced the issue to a stale Redis key, added a cache‑invalidation hook on every write, and implemented a short‑lived “write‑through” lock. After deploying the fix, the UI always reflected the latest data, and the incident never recurred."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. In a recent project we built a dashboard that displayed real‑time inventory levels. We were using a Redis cache to speed up reads, and a background job that synced the cache from the primary database every few minutes. One deployment introduced a bug that prevented the job from running, so the cache stopped updating while writes kept going to the database. Users started seeing stale stock counts, which caused order errors. I quickly rolled back the deployment, added a health check on the sync job, and implemented a fallback to read directly from the DB if the cache lag exceeded a threshold, preventing the issue from recurring."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I once managed a real-time inventory system where a race condition caused stale cache reads. Users saw items as available that were actually out of stock, leading to failed orders and frustration. We identified the issue by tracing inconsistent API responses against the database. To fix it, we implemented strict optimistic locking on the database layer and added a versioning token to our cache invalidation strategy. Post-fix, we added automated integration tests specifically targeting concurrent updates to ensure data integrity remained consistent under high load."
+      }
+    ]
+  },
+  "fe-p1": {
+    "question": "In your repo your main project, walk me through one component you'd rewrite today.",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start with the user‑profile sidebar component. Today it mixes presentation, data fetching, and business logic in a single file, making it hard to test and reuse. I’d split it into a dumb presentational component, a container that handles GraphQL queries, and a hook for managing follow/unfollow state. That way the UI stays declarative, the data layer is isolated, and the component becomes fully unit‑testable and easier to maintain."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. If I were to refactor something right now, I'd target the data‑fetching service that currently mixes HTTP logic, caching, and error handling in a single class. I'd split it into three thin layers: a low‑level HTTP client, a cache wrapper, and a domain‑specific repository that composes the two. This separation makes each piece unit‑testable, clarifies responsibilities, and lets us swap out the transport or caching strategy without touching business code. It also reduces the class size dramatically, improving readability and maintainability."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "Honestly, it’s our legacy `UserDashboard` component. It’s a monolith handling data fetching, complex conditional rendering, and local state all in one massive class. I’d rewrite it using React hooks and split it into smaller, focused components like `ProfileCard` or `ActivityFeed`. I’d move the data logic into a custom hook and use a state management library like Zustand for shared state. This would drastically improve readability, make unit testing straightforward, and allow us to lazy-load sections, significantly boosting initial load performance and maintainability for the team."
+      }
+    ]
+  },
+  "fe-p2": {
+    "question": "Have you used React 19's useStableLayout hook? What did you think?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’ve been using React 19’s useStableLayout hook for the past couple of weeks on a couple of projects. It’s a neat addition that lets you schedule layout reads and writes more predictably, especially when dealing with complex DOM measurements. In practice it reduces flicker and race conditions that used to pop up when components re‑rendered too quickly. I find it integrates seamlessly with the existing useLayoutEffect flow, so the learning curve is minimal and the performance gains are noticeable."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’ve had a chance to experiment with the new useStableLayout hook in React 19, and I was impressed by how it simplifies synchronizing layout effects with state updates. It gives me a reliable way to run side‑effects after the DOM has settled without worrying about stale closures, which used to be a headache with useLayoutEffect. The API feels natural, and it helped reduce visual glitches in a couple of complex grid components I was building. Overall, it’s a solid addition that makes layout‑driven logic much more predictable."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I haven't specifically used `useStableLayout` in a production project yet, but I've been following the React 19 release notes closely. My initial take is that it addresses a really common pain point: layout shifts caused by fonts or images loading late. It feels like a natural evolution of the hydration story, giving us more granular control over visual stability. I'm planning to prototype it in a dashboard component next week to see how it performs with variable-width content. Honestly, it seems like a solid tool for making interfaces feel more polished and professional out of the box."
+      }
+    ]
+  },
+  "fe-x1": {
+    "question": "What are you learning on your own right now?",
+    "topic": "Frontend · Mid-level",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Right now I'm diving deep into GraphQL and its ecosystem, especially learning how to design efficient schemas and implement resolvers that can scale. I’ve also been experimenting with TypeScript in a Node.js environment, focusing on advanced type utilities to keep my codebase robust. On the frontend side, I’m brushing up on React hooks and state management patterns like Redux Toolkit and Zustand to see which fits best for different project needs. Finally, I’m keeping an eye on the latest in WebAssembly, trying to prototype small modules to see how they can speed up compute‑heavy tasks in the browser."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "These days I’m diving into distributed systems, especially how modern data pipelines handle back‑pressure and fault tolerance. I’ve been reading the latest papers on stream processing frameworks and building a small prototype with Kafka and Flink to see the concepts in action. At the same time I’m picking up Rust because its safety guarantees and performance feel like a natural fit for low‑latency services, so I’m working through the language’s ownership model and writing a few micro‑services to get comfortable with the ecosystem."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "Right now, I’m diving deep into distributed systems, specifically focusing on consensus algorithms like Raft and how they handle network partitions. I’m implementing a simplified version of a key-value store from scratch to really understand the edge cases around leader election and log replication. This hands-on approach helps me bridge the gap between theoretical concepts and practical application. I find it incredibly engaging because it forces me to think critically about fault tolerance and consistency, which directly improves how I design robust microservices in my day-to-day work."
+      }
+    ]
+  },
+  "lib-sd1": {
+    "question": "Design a URL shortener. Where does it break first as traffic grows?",
+    "topic": "System design",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by hashing each long URL to a short code and storing that mapping in a fast key‑value store. As traffic grows, the first place it will break is the storage layer. If the database can’t keep up with the write and read throughput, the service will start timing out. Once the storage saturates, the whole system stalls, so scaling the database is the critical bottleneck."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When traffic spikes, the first thing that usually gives way is the database that stores the mappings between short codes and the original URLs. If you’re using a single relational instance, the read‑write load quickly overwhelms it, causing latency and occasional timeouts. That bottleneck then ripples to the API layer, because every request has to hit the DB to resolve or create a short link. Scaling the storage—by sharding, moving to a key‑value store, or adding caching—becomes the immediate priority."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "The first point of failure is the database. If you’re doing a synchronous lookup on every redirect, your primary database becomes a massive bottleneck because you’re handling read-heavy traffic directly against your source of truth. To fix this, I’d move the id-to-url mapping into a distributed cache like Redis or Memcached. This shifts the read load away from the primary database, allowing it to handle writes and occasional cache misses only. I’d also implement a consistent hashing strategy for the short IDs to ensure even distribution across my storage cluster, preventing hot spots before they even become an issue."
+      }
+    ]
+  },
+  "lib-sd2": {
+    "question": "How would you build a notification system that sends emails, texts and push notifications?",
+    "topic": "System design",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by designing a unified event bus that publishes notification events with a payload describing the message, recipients, and desired channels. Then I’d create separate worker services for email, SMS, and push, each listening to the bus and using their respective APIs—SendGrid or SMTP for email, Twilio for texts, and Firebase or APNs for push. I’d persist a delivery log in a database, add retries with exponential backoff, and expose a lightweight API so the rest of the app can trigger notifications without knowing the details. This keeps the system scalable, fault‑tolerant, and easy to extend."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d start by defining a common notification interface that abstracts the three channels, then implement concrete email, SMS and push services that each know how to talk to their provider—SMTP or an email API, a Twilio‑style gateway, and Firebase or APNs for push. A central dispatcher would accept a message payload, look up user preferences, and fire off the appropriate service calls asynchronously, using a message queue like RabbitMQ or SQS so the work is reliable and can be retried. Monitoring and logging would round out the system."
+      },
+      {
+        "model": "Qwen 3",
+        "text": "I’d start with a central notification service that accepts a single event. Internally, I’d use a message queue to decouple processing from the API, ensuring we never block the main request. A fan-out pattern would then route that event to specific handlers for email, SMS, and push. Each handler manages its own provider integration and retry logic independently. This keeps the system loosely coupled, so adding a new channel later is trivial. I’d also track delivery status in a database for auditing and ensure idempotency to prevent duplicate messages during retries."
+      }
+    ]
+  },
+  "lib-sd3": {
+    "question": "Design a rate limiter for a public API.",
+    "topic": "System design",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I would build a token bucket rate limiter that tracks requests per client key. Each client gets a bucket that refills at a configured rate, say 100 tokens per minute. When a request comes in, I atomically decrement a token; if none remain, I reject with a 429. To support burst traffic I allow a small burst capacity. I store the bucket state in Redis for horizontal scaling and use Lua scripts to keep it atomic. This gives predictable limits, easy tuning, and works across multiple API servers."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d build a token‑bucket limiter backed by a distributed store like Redis so it works across all our API nodes. Each client gets a bucket with a fixed capacity and a refill rate that matches our quota—say 100 requests per minute. When a request arrives I atomically decrement the token count; if the count is negative I reject the call with a 429. Redis scripts guarantee the check‑and‑decrement is safe under concurrency, and the bucket state expires automatically, keeping memory usage low while providing consistent throttling for every consumer."
+      }
+    ]
+  },
+  "lib-sd4": {
+    "question": "How would you design a chat app that shows when someone is typing?",
+    "topic": "System design",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by using WebSocket for real‑time communication. When a user starts typing, the client sends a lightweight “typing” event to the server, which then broadcasts it to the other participant. The server throttles these events so we don’t flood the channel. On the receiving side, I display a “user is typing…” indicator that disappears after a short timeout if no further typing events arrive. This keeps the UI responsive and conserves bandwidth."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d start by adding a lightweight “typing” event that the client emits as soon as the user presses a key and stops after a short debounce, say 300 ms of inactivity. The server just forwards that event to the other participants in the same conversation, maybe throttling it to avoid flooding. On the receiving side I’d keep a small in‑memory map of who’s currently typing and render a “X is typing…” banner that clears when the timeout expires or a new message arrives. This keeps latency low, scales with many users, and requires only a tiny amount of state on both client and server."
+      }
+    ]
+  },
+  "lib-sd5": {
+    "question": "When would you split a monolith into microservices, and when would you not?",
+    "topic": "System design",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d split a monolith into microservices when the team needs to scale parts of the system independently, when different services have distinct deployment cycles, or when the codebase is too tangled for any developer to make changes without risking a cascade of failures. I’d keep it monolithic when the application is small, the team is tight, and the cost of breaking a single deploy into many is higher than the benefit. In short, if the complexity and scaling needs outweigh the operational overhead, microservices make sense; otherwise, a single codebase keeps things simpler."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d consider breaking a monolith into microservices when the system has clearly bounded domains that evolve independently, when scaling specific parts without scaling the whole is a real cost driver, or when team organization aligns with those domains and you need faster, isolated deployments. If the codebase is still small, the business logic is tightly coupled, latency is critical, or the operational overhead of managing many services outweighs the benefits, I’d stay monolithic and focus on refactoring internally instead."
+      }
+    ]
+  },
+  "lib-be1": {
+    "question": "What's the difference between a process and a thread, and when has it mattered to you?",
+    "topic": "Backend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "A process is an isolated execution environment with its own memory space, file descriptors, and security context, while a thread shares the process’s memory and resources but runs independently. I’ve seen the difference matter when debugging a memory corruption bug in a multithreaded server; the corruption only showed up when two threads accessed the same buffer without proper locking, something a separate process wouldn’t have exposed. Knowing the boundaries helped me add atomic operations and avoid deadlocks, keeping the service stable under load."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "A process is an independent program with its own memory space, while a thread is a lightweight unit of execution that shares that memory with other threads in the same process. I first ran into the difference when I was building a high‑throughput web service. I started with a single‑process, single‑threaded design and quickly hit latency spikes because each request blocked the whole process. Switching to a multithreaded model let me handle many connections concurrently without copying data between processes, and the performance gain was dramatic. That experience taught me when to choose threads over separate processes."
+      }
+    ]
+  },
+  "lib-be2": {
+    "question": "How do database indexes work, and when can they make things slower?",
+    "topic": "Backend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Indexes are like a fast lookup table for a table’s columns. When I query a column that has an index, the database can jump straight to the matching rows instead of scanning every row, so reads become much quicker. But I have to remember that indexes aren’t free. Every time I insert, update, or delete, the index must be updated too, which adds overhead. If I create too many indexes or index columns that are rarely searched, the write performance drops and storage grows, so it can actually slow the system overall."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Database indexes are like a sorted shortcut table that the engine keeps alongside your data. When you query on a column that has an index, the engine can jump directly to the matching rows instead of scanning every record, which makes reads dramatically faster. However, indexes also have a cost: every time you insert, update, or delete a row, the index must be updated, so write operations become slower. If you index columns you rarely search on or create too many indexes, the overhead can outweigh the benefits."
+      }
+    ]
+  },
+  "lib-be3": {
+    "question": "Explain how you'd make an API endpoint idempotent.",
+    "topic": "Backend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "To make an API endpoint idempotent, I would first ensure that each request contains a unique identifier, like a client‑generated idempotency key. The server stores the result of the operation keyed by that identifier. When a duplicate request arrives, the server simply returns the stored result instead of repeating the action. For state‑changing operations, I’d design them to be safe to repeat—such as using “upsert” logic or checking existing state before modifying data—so that repeated calls leave the system unchanged. This guarantees the same outcome regardless of how many times the request is sent."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "To make an API endpoint idempotent, I design it so that repeating the same request with the same payload always yields the same result without side effects. For a write operation I’d use a client‑generated token or a unique request ID and store it alongside the operation; if the server sees the token again it simply returns the original response instead of performing the action again. For reads I ensure they’re pure and don’t modify state, and for deletes I treat a missing resource as a successful no‑op. This way any number of retries or duplicate calls are safe."
+      }
+    ]
+  },
+  "lib-be4": {
+    "question": "REST or GraphQL for a new mobile app backend? Why?",
+    "topic": "Backend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d lean toward GraphQL for a new mobile app backend. It lets the client ask for exactly the data it needs, which reduces over‑fetching and keeps bandwidth low—a big win on mobile. The schema gives a clear contract and self‑documenting API, making it easier to evolve the backend without breaking existing clients. Plus, the single endpoint simplifies routing and caching. REST is fine for simple CRUD, but GraphQL’s flexibility and efficiency usually outweigh its learning curve in a mobile context."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d go with GraphQL for a new mobile app backend. It lets the client request exactly the data it needs, which cuts down on over‑fetching and reduces the number of round‑trips, a big win on spotty mobile networks. With a single endpoint I can evolve the schema without versioning each REST route, and caching can still be handled at the field level. That flexibility speeds up development and keeps the app responsive as the feature set grows."
+      }
+    ]
+  },
+  "lib-be5": {
+    "question": "What happens when you type a URL into the browser and press enter?",
+    "topic": "Backend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "When I hit enter after typing a URL, my browser first parses the address to extract the protocol, domain, and path. It then resolves the domain through DNS to get the server’s IP. Next, it opens a TCP connection to that IP on the appropriate port, usually 80 for HTTP or 443 for HTTPS. For HTTPS, it performs a TLS handshake to establish a secure channel. Finally, it sends an HTTP request, receives the response, and renders the page."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When I hit enter after typing a URL, the browser first parses the address, adds any missing scheme like http://, and looks up the domain via DNS to get an IP address. It then opens a TCP connection (or TLS handshake for HTTPS) to that server, sends an HTTP request, and waits for the response. The server processes the request, returns HTML, CSS, JavaScript, and other assets, which the browser streams in, parses, builds the DOM, applies styles, runs scripts, and finally paints the rendered page for me to see."
+      }
+    ]
+  },
+  "lib-fe1": {
+    "question": "Why does React re-render, and how do you stop unnecessary re-renders?",
+    "topic": "Frontend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "React re‑renders whenever the component’s state or props change, or when its parent re‑renders. That’s how it keeps the UI in sync with the data. To avoid needless re‑renders I first make sure my state updates only when the value actually changes, using shallow comparison or the functional form of setState. I also wrap pure components with React.memo and use useCallback or useMemo to memoize functions and values, so the props stay stable. Finally, I keep the component tree shallow and lift state only where it’s needed, which reduces the number of components that get notified of changes."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "React re‑renders a component whenever its state changes, its props change, or its parent re‑renders and forces a new render cycle. It also does it when a context value updates or when a hook like useReducer dispatches. To stop unnecessary re‑renders I keep state as minimal as possible, memoize expensive components with React.memo, and use useCallback or useMemo to keep function and value references stable. I also avoid passing new object literals as props and, when needed, implement a custom comparison function in memo."
+      }
+    ]
+  },
+  "lib-fe2": {
+    "question": "How would you make a web page accessible to screen-reader users?",
+    "topic": "Frontend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I would start by ensuring every image has a descriptive alt attribute, and that any non‑text content is labeled with aria‑labels when necessary. I’d structure the page with proper heading hierarchy and use semantic tags like <nav>, <main>, and <footer> so screen readers can navigate quickly. I’d make sure focus order is logical, use role attributes for custom widgets, and test with a screen reader to catch any hidden issues."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I start by using semantic HTML—proper headings, landmarks like <nav>, <main>, and <footer>—so a screen reader can navigate the structure naturally. I add descriptive alt text to all images, and for complex graphics I provide a concise caption plus a longer description if needed. Form controls get associated <label> elements and ARIA attributes only when native semantics aren’t enough. I ensure keyboard focus is visible and logical, test with a screen‑reader such as NVDA or VoiceOver, and fix any issues the tool reports. This combination gives blind users a fully navigable, understandable experience."
+      }
+    ]
+  },
+  "lib-fe3": {
+    "question": "What's the difference between server-side rendering and client-side rendering?",
+    "topic": "Frontend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I would say server‑side rendering means the HTML is built on the server and sent to the browser fully formed. The user gets a ready‑to‑display page and can see content immediately, which helps with SEO and initial load speed. Client‑side rendering, on the other hand, sends a barebones shell and JavaScript that then builds the page in the browser. This can make the first paint slower but allows richer interactivity and faster subsequent navigation after the app is loaded."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Server‑side rendering means the HTML for a page is generated on the back‑end and sent fully formed to the browser, so the user sees the content as soon as the page loads and search engines can index it easily. With client‑side rendering, the server delivers a minimal HTML shell and JavaScript bundles; the browser runs that code, fetches data, and builds the UI dynamically, which can make interactions feel snappier after the initial load but adds a heavier upfront JavaScript cost and can be less SEO‑friendly."
+      }
+    ]
+  },
+  "lib-fe4": {
+    "question": "How do you handle a form with complex validation across many fields?",
+    "topic": "Frontend",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "When I tackle a form with complex cross‑field validation, I start by mapping out the dependencies—what fields influence each other. I then encapsulate the rules in small, reusable functions or a validation service so each rule can be unit‑tested independently. In the component I keep state minimal, using a single object for all values and a separate object for errors, updating them in a single, predictable flow. I run the validation logic on change and before submit, providing immediate feedback while keeping the UI responsive. This approach keeps the code maintainable and the user experience smooth."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I start by breaking the validation logic into reusable functions that each know how to validate a single field or a related group, then I compose them in a central validator that runs whenever the form changes or on submit. I keep the state in a single source—usually a form library or a reducer—so I can run the whole schema and collect errors in one pass, updating the UI instantly. By separating concerns I avoid tangled conditionals, make the rules testable, and ensure the user gets clear feedback as soon as possible."
+      }
+    ]
+  },
+  "lib-db1": {
+    "question": "How would you migrate a large table with zero downtime?",
+    "topic": "Data",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d use a two‑stage approach. First, I’d create a new table with the same schema and add triggers or a change‑data capture (CDC) pipeline to copy every insert, update, and delete from the old table to the new one in real time. While the old table stays live, I’d run a bulk copy job to catch up any missed rows, then do a quick switch‑over by renaming the tables or updating the application to point to the new table. Finally, I’d drop the old table after verifying everything’s consistent. This keeps the system available with no downtime."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d start by creating a new table with the same schema and any needed indexes, then use a background process to copy data in chunks, marking each batch as done in a tracking table. While that runs I keep the original table writable and capture every INSERT, UPDATE, or DELETE in a change‑log table or via triggers. Once the back‑fill is complete I replay the logged changes, then switch the application to point at the new table inside a brief transaction, verify counts, and finally drop the old table. This gives a seamless migration with zero downtime."
+      }
+    ]
+  },
+  "lib-db2": {
+    "question": "Explain database transactions and isolation levels in your own words.",
+    "topic": "Data",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "A database transaction is a single unit of work that must be completed entirely or not at all, ensuring data consistency. Think of it like a checkout process: all steps succeed, or the system rolls back to the original state. Isolation levels control how concurrent transactions see each other’s changes. In READ COMMITTED, you only see committed data, avoiding dirty reads. In REPEATABLE READ, you get a stable snapshot, preventing non-repeatable reads. SERIALIZABLE is the strictest, making transactions appear as if they ran one after another, eliminating phantom reads. This balance lets me choose speed versus strict consistency for my application."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. A database transaction is a unit of work that groups several operations so they either all succeed together or all fail, keeping the data consistent. Think of it like a single, atomic action: you start it, do reads and writes, and then either commit to make the changes permanent or roll back to discard them. Isolation levels define how much one transaction is allowed to see the intermediate results of others. At higher isolation you get stricter guarantees—no dirty reads, non‑repeatable reads, or phantom rows—but it can reduce concurrency, while lower levels improve throughput at the cost of seeing potentially uncommitted or changing data."
+      }
+    ]
+  },
+  "lib-db3": {
+    "question": "How would you design the database for an online store's orders?",
+    "topic": "Data",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by normalizing the data so each entity has its own table. I’d keep a Users table, a Products table, and an Orders table that references a user. Then I’d create an OrderItems table to break each order into its line items, linking back to the Products table. I’d add status, timestamps, and a separate Payments table to track transaction details. Indexing on foreign keys and order dates would keep queries fast, and I’d use foreign‑key constraints to preserve referential integrity."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I’d start by modeling the core entities: Customers, Products, Orders, OrderItems, Payments and Shipments. Each order would have a unique ID, a foreign key to the customer, timestamps, status fields and a total amount. OrderItems would capture the product ID, quantity, price at purchase and link back to the order, allowing a one‑to‑many relationship. Payments and Shipments would reference the order and store their own state and audit fields. I’d normalize to avoid duplication, add indexes on the foreign keys and status columns for fast lookups, and enforce referential integrity with cascades where appropriate. This structure scales well for reporting and transactional consistency."
+      }
+    ]
+  },
+  "lib-ops1": {
+    "question": "Walk me through how you'd set up CI/CD for a new project.",
+    "topic": "DevOps",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by picking a source‑control system like GitHub or GitLab and push my code there. From there I’d create a pipeline that runs on every push to the main branch. The pipeline would first lint and unit‑test the code, then build a Docker image, push it to a registry, and finally deploy that image to a staging environment. If everything passes, I’d promote the image to production, maybe with a blue‑green or canary strategy, and set up automated rollback on failure. I’d also add monitoring and alerts so any issues surface instantly."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. First I’d spin up a repository on GitHub and connect it to a CI service like GitHub Actions. I’d create a workflow file that triggers on every push and pull request, installs dependencies, runs linting and unit tests, and fails the build if anything breaks. Once the test stage passes, I’d add a deploy job that builds the Docker image, pushes it to a registry, and then uses a tool like Helm or Terraform to roll it out to a staging environment. After a manual approval step, the same pipeline promotes the build to production, ensuring every change is automatically verified and safely released."
+      }
+    ]
+  },
+  "lib-ops2": {
+    "question": "A deploy just broke production. What do you do in the first ten minutes?",
+    "topic": "DevOps",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "First I stop the deployment pipeline to prevent more changes from rolling out. I then check the monitoring dashboards and logs for any error spikes or critical alerts to understand what went wrong. I communicate the issue to the team and the stakeholders, keeping the tone calm and factual. I roll back to the last known good version if that’s safe and immediate, and start reproducing the error in a staging environment to isolate the root cause. From there I can plan the next steps."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When I see a production deploy break, my first ten minutes are all about containment and information. I immediately check the monitoring dashboards and error logs to confirm the scope of the failure, then I alert the on‑call team and any stakeholders with a concise status: what’s down, impact, and that I’m investigating. I roll back the change if a quick revert is safe, or I isolate the offending service behind a feature flag. While doing that, I capture timestamps and error messages so I can hand a clear, reproducible incident summary to the team for deeper root‑cause analysis."
+      }
+    ]
+  },
+  "lib-ops3": {
+    "question": "What's the difference between Docker and a virtual machine?",
+    "topic": "DevOps",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Docker and a virtual machine both let me isolate applications, but they do it in different ways. A virtual machine boots an entire guest OS with its own kernel, so it’s heavier and slower to start, but it gives me full hardware emulation and strong isolation. Docker, on the other hand, shares the host’s kernel and runs containers as isolated processes; that makes them lightweight, faster to spin up, and more efficient, but they’re less isolated than a full VM."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Docker and a virtual machine both isolate workloads, but they do it at different layers. With a VM, the hypervisor virtualizes the entire hardware stack, so each instance runs its own full operating system on top of the host’s kernel, which adds overhead and slower startup. Docker, on the other hand, uses containerization: it shares the host kernel and only packages the application and its dependencies, so containers are lightweight, start in seconds, and use far fewer resources. In short, VMs virtualize hardware, containers virtualize the OS."
+      }
+    ]
+  },
+  "lib-sec1": {
+    "question": "How would you store user passwords safely?",
+    "topic": "Security",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I store passwords by never keeping them in plain text. When a user signs up I hash the password with a strong algorithm like Argon2, which is memory‑bound and resistant to GPU cracking. I also add a unique, cryptographically secure salt per user so identical passwords produce different hashes. The hash and salt are stored in the database, and on login I repeat the hash with the stored salt to verify. This way the real password never touches the server or database."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I store passwords by never keeping the raw value at all. When a user creates or changes a password I run it through a strong, adaptive hash function like Argon2id with a unique, per‑user salt and a high memory cost, then store only the resulting hash and the salt. I also enforce rate‑limited login attempts and use HTTPS everywhere so the plaintext never travels over the network. This way even if the database is compromised the original passwords remain computationally infeasible to recover."
+      }
+    ]
+  },
+  "lib-sec2": {
+    "question": "What is SQL injection and how do you prevent it?",
+    "topic": "Security",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "SQL injection is when an attacker tricks a program into running malicious SQL by inserting code into input fields that the database executes. I prevent it by always using parameterized queries or prepared statements, which keep data separate from commands. I also validate and sanitize user input, enforce least privilege on database accounts, and keep the database and application libraries up to date. Those steps keep the data safe and the app reliable."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "SQL injection is a security flaw where an attacker tricks my application into sending malicious SQL code to the database, often by inserting crafted input into a query string. I prevent it by never concatenating user data directly into SQL; instead I use prepared statements or parameterized queries that keep the code and data separate. I also validate and sanitize inputs, enforce least‑privilege database accounts, and keep the ORM or database driver up to date so any known exploits are patched."
+      }
+    ]
+  },
+  "lib-sec3": {
+    "question": "How does JWT authentication work, and what are its risks?",
+    "topic": "Security",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "JWT authentication works by giving a client a signed token after they log in. I create a payload that contains user data and an expiration, then sign it with a secret or private key. The client stores the token and sends it with each request, usually in the Authorization header. The server verifies the signature and checks the expiration before allowing access. The main risks are that if the secret is leaked the token can be forged, tokens can be stolen if transmitted over insecure channels, and because they’re stateless, I can’t revoke a token until it expires unless I add extra logic."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "JWT authentication works by having the server issue a signed token after a user successfully logs in. That token contains claims—like the user’s ID and expiration—and is signed with a secret or private key, so the client can present it on each request without re‑authenticating. The server verifies the signature and trusts the claims if they’re valid. The main risks are that stolen tokens give full access until they expire, signatures can be mis‑configured or use weak algorithms, and there’s no built‑in revocation, so compromised tokens linger unless you implement short lifetimes or a revocation list."
+      }
+    ]
+  },
+  "lib-test1": {
+    "question": "How do you decide what to unit test versus integration test?",
+    "topic": "Testing",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I decide what to unit test by looking at the smallest piece of logic that can be isolated – a single function or method that has no external dependencies. If it just does math, string manipulation, or a pure transformation, I write a unit test. Anything that talks to a database, file system, network, or other services I treat as integration territory. For integration tests I group a few related components and run them together to ensure the real interactions work as expected. This keeps my tests fast and focused while still giving me confidence that the whole system behaves correctly."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I start by looking at the responsibility of the code. If a piece is a pure function or a small class with well‑defined inputs and outputs, I write unit tests that exercise every branch and edge case, keeping them fast and isolated. When the behavior depends on external systems—databases, web services, message queues—or on how multiple components collaborate, I move to integration tests to verify the whole flow works together. In practice I aim for a solid unit base and just enough integration coverage to catch wiring and contract issues."
+      }
+    ]
+  },
+  "lib-test2": {
+    "question": "Tell me about a flaky test you fixed. What was causing it?",
+    "topic": "Testing",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I once had a test that intermittently failed because it was asserting the order of items in a list that was populated from a database query. The database was sharded and the query used an unordered index, so the rows could come back in any order depending on which shard handled the request. I fixed it by changing the assertion to compare sets instead of lists, ensuring the test only cares about presence, not order. This eliminated the flakiness and made the test reliable."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. In one project we had a UI test that would randomly fail on Chrome CI runs. The failure was intermittent because the test relied on a hard‑coded sleep after clicking a button, assuming the page would be ready instantly. On slower agents the element wasn’t present yet, so the assertion blew up. I replaced the sleep with an explicit wait that checks for the element’s visibility, and I also added a retry wrapper around the network request mock. After that the test became deterministic and the flakiness disappeared."
+      }
+    ]
+  },
+  "lib-dbg1": {
+    "question": "A service's memory keeps growing until it crashes. How do you find the leak?",
+    "topic": "Debugging",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I start by reproducing the crash in a controlled environment so I can observe the memory behaviour. I run the service under a profiler that tracks heap allocations, like Valgrind, AddressSanitizer, or a language‑specific tool such as dotMemory for .NET or VisualVM for Java. I look for objects that keep growing without being freed, especially those referenced by long‑lived structures. Once I spot a suspicious allocation pattern, I add logging around the suspected code paths and use a heap dump to confirm which objects are still referenced. This lets me pinpoint the exact code that retains memory and fix the root cause."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I start by reproducing the growth under a controlled load while attaching a profiler or heap dump tool to the process. I take snapshots at regular intervals and compare object counts and retained sizes to see which types keep accumulating. I also add logging around allocations that look suspicious, and I check for common patterns like static collections, listeners, or caches that aren’t cleared. Once I pinpoint the offending objects, I trace back to the code that holds the reference and fix the lifecycle so the memory can be reclaimed."
+      }
+    ]
+  },
+  "lib-dbg2": {
+    "question": "An API is slow only for some users. How do you investigate?",
+    "topic": "Debugging",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I’d start by confirming the symptoms with the affected users—ask them when they notice the lag, what endpoints they’re hitting, and what devices or networks they’re using. Then I’d pull logs for those specific IPs or user IDs and look for patterns: higher latency, timeouts, or error rates. I’d compare that data against a baseline of normal traffic, and if the issue is network‑related I’d trace packets or use a CDN analytics dashboard. If the logs show slow database queries or throttling, I’d profile those queries and check resource usage. Once I isolate the root cause—whether it’s a regional network hiccup, a misconfigured cache, or a code path that only triggers for certain inputs—I’ll address it and then monitor to ensure the problem is resolved."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When I see an API lagging for only a subset of users, I start by reproducing the issue with the same request parameters, network conditions, and authentication tokens those users have. I check logs and tracing to see where latency spikes—whether it’s in the application code, database queries, or external services. I compare the slow requests’ headers, payload sizes, and user‑specific data against normal ones to spot differences. If it looks like a data‑skew or permission‑related path, I add targeted instrumentation, isolate the bottleneck, and then optimize or scale the offending component."
+      }
+    ]
+  },
+  "lib-beh1": {
+    "question": "Tell me about a time you disagreed with a teammate about a technical decision.",
+    "topic": "Behavioral",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I was working on a new microservice and a teammate suggested we use a NoSQL database because it would scale better. I argued that the data model was highly relational and that a SQL database would give us stronger consistency guarantees, which were critical for our transaction processing. We set up a small proof of concept for both options. The SQL prototype met our performance targets and simplified our rollback logic, so we chose that path. The experience reinforced the value of testing assumptions before committing to a solution."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I remember a project where we were choosing a caching strategy for a high‑traffic API. My teammate pushed for an in‑memory cache because it was simple to implement, but I was concerned about scalability and data consistency across multiple instances. I explained that a distributed cache like Redis would add a bit more complexity but would handle load spikes and keep the cache coherent across servers. We ran a quick load test comparing both approaches, and the results showed Redis performed far better under real‑world traffic, so we adopted it. This experience taught me the value of backing up opinions with data and being open to compromise when the evidence is clear."
+      }
+    ]
+  },
+  "lib-beh2": {
+    "question": "Describe a project that failed. What would you do differently?",
+    "topic": "Behavioral",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I once led a micro‑services migration for a legacy e‑commerce platform. We pushed too many services to production before fully automating our CI/CD pipeline, and the rollout caused cascading failures that knocked the site offline for hours. In hindsight, I would have instituted a stricter feature‑flag strategy and staged releases, so each service could be tested in isolation. I’d also have set up a dedicated rollback plan and run a full chaos‑engineering exercise before the go‑live, ensuring we could recover quickly and learn from the incident."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "One project that didn’t succeed was a real‑time analytics dashboard I led for a retail client. We tried to ship a complex micro‑service architecture in three months, but the data pipeline was under‑engineered, the UI was unstable, and we missed critical integration tests, so the client never got a usable product. Looking back, I’d start with a minimal viable service, invest time in solid data contracts and automated testing, and iterate with the client every two weeks instead of a big‑bang release. This would have given us early feedback, reduced risk, and kept the timeline realistic."
+      }
+    ]
+  },
+  "lib-beh3": {
+    "question": "How do you learn a new technology quickly when a project needs it?",
+    "topic": "Behavioral",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "When a new technology is required, I start by quickly skimming the official documentation and key tutorials to understand the core concepts and the most common use cases. I then look for a small, practical example that I can run and tweak, which helps me see how the pieces fit together. As I experiment, I jot down patterns and pitfalls, and I immediately apply what I learn to a tiny part of the project. This hands‑on iteration lets me internalize the syntax and best practices fast, and I can then scale up to the full implementation with confidence."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "When I need to get up to speed fast, I start by digging into the official docs and any quick‑start guides to understand the core concepts and typical workflows. I then build a tiny prototype that mirrors a key piece of the project, which forces me to hit the most common APIs and spot pitfalls early. While coding I skim blog posts, video tutorials, and community forums for real‑world tips, and I make a cheat sheet of commands and patterns I’ll reuse. By iterating on a small piece, I turn abstract knowledge into concrete, project‑ready code quickly."
+      }
+    ]
+  },
+  "lib-beh4": {
+    "question": "Tell me about a time you had to explain something technical to a non-technical person.",
+    "topic": "Behavioral",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I once had to explain how our new data‑warehouse pipeline worked to a product manager who had no background in engineering. I started by comparing the pipeline to a postal system—data is like letters, the ingestion step is the post office, the transformation step is sorting, and the final load is delivery to the recipients. I used simple analogies, asked her to picture the flow, and paused frequently to check that she was following. By the end of the conversation, she could explain the process to her team and even suggested a few useful metrics to track."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "I once had to walk my marketing manager through why our website’s load time was spiking after a new feature launch. I started by comparing the site to a highway, explaining that each request is a car and our server is the road. When we added a heavy analytics script, it was like opening an extra lane without widening the road, causing a traffic jam. I showed a simple graph of response times before and after, used the highway metaphor to illustrate bottlenecks, and then suggested lazy‑loading the script. Within a few minutes she understood the problem and approved the fix."
+      }
+    ]
+  },
+  "lib-algo1": {
+    "question": "How would you find duplicate entries in a list of a million emails?",
+    "topic": "Algorithms",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "I would start by loading the emails into a hash set as I iterate through the list. Each time I encounter an address, I check the set: if it’s already there, I record it as a duplicate; if not, I add it. This gives me O(n) time and O(n) space, which is fine for a million entries. After the pass, I can output or further process the duplicates as needed."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "To tackle a million‑email list I’d load the addresses into a hash set as I iterate. For each email I check if it’s already in the set; if it is, I add it to a duplicates collection, otherwise I insert it. A hash‑based approach gives O(n) time and O(n) extra space, which is fine for a million items on modern hardware. If memory were tighter I could sort the list first and then scan for consecutive repeats, which also runs in O(n log n) but uses less auxiliary space."
+      }
+    ]
+  },
+  "lib-algo2": {
+    "question": "Explain Big-O to me like I'm new to programming, with an example from your own code.",
+    "topic": "Algorithms",
+    "answers": [
+      {
+        "model": "GPT-OSS 20B",
+        "text": "Big‑O is a way to describe how the running time of a piece of code grows as the input size gets larger. I think of it like a speed limit for algorithms. For example, in a recent project I wrote a function that scans a list of user records to find a particular ID. The time it takes is directly proportional to the number of records, so I call it O(n). If I had used a hash table instead, the lookup would be O(1), much faster for large datasets."
+      },
+      {
+        "model": "GPT-OSS 120B",
+        "text": "Sure. Big‑O is just a way to talk about how the running time or memory usage of a piece of code grows as the input gets bigger. In my recent project I wrote a function that scans a list of user records to find duplicates. I loop through the list once, checking each element against a hash set, so the time grows linearly with the number of records—that’s O(n). If I had used a nested loop, the time would have grown quadratically, O(n²), which quickly becomes impractical for large data sets."
+      }
+    ]
+  }
+}
