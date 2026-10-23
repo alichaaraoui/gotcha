@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { openDocked } from "@/components/LinkedInButton";
 import demo from "@/data/fixtures/identity_demo.json";
-import type { IdentityReport, IdentityRequest, IdentityStatus, Question } from "@/lib/types";
+import type { CandidateStory, IdentityReport, IdentityRequest, IdentityStatus, Question } from "@/lib/types";
 
 const KEY = "gotcha.identityInput";
 
@@ -107,6 +107,37 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
   );
 }
 
+// ---------- Candidate story: narrative + merged timeline ----------
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = (d: string) => (d === "now" ? "Now" : d.length > 4 ? `${MONTHS[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : d);
+
+function StoryView({ story }: { story: CandidateStory }) {
+  return (
+    <div className="space-y-3">
+      <div className="label">Candidate story</div>
+      <p className="text-sm leading-relaxed text-white/85">{story.summary}</p>
+      <ol className="relative ml-1.5 space-y-2.5 border-l border-white/15 pl-4">
+        {story.timeline.map((e, i) => (
+          <li key={i} className="relative text-sm">
+            <span className={`absolute -left-[21px] top-1.5 h-2 w-2 rounded-full ${e.flag ? (e.flag.status === "risk" ? "bg-flag" : "bg-watch") : e.source === "github" ? "bg-white/70" : "bg-white/30 ring-1 ring-white/50"}`} />
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="w-16 shrink-0 text-xs text-white/45">{fmtDate(e.date)}</span>
+              <span className="min-w-0 flex-1 text-white/85">{e.label}</span>
+              <span className="text-[10px] uppercase tracking-wider text-white/35">{e.source === "github" ? "GitHub" : "Claimed"}</span>
+            </div>
+            {e.flag && (
+              <div className={`mt-0.5 pl-[72px] text-xs ${e.flag.status === "risk" ? "text-flag" : "text-watch"}`}>
+                {e.flag.status === "risk" ? "✕" : "⚠"} {e.flag.why}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+      <p className="text-[11px] text-white/35">Filled dots: GitHub evidence · hollow: what they claim. Story {story.summarySource === "groq" ? "written by AI from these facts" : "strung from the facts"}.</p>
+    </div>
+  );
+}
+
 // ---------- Card (right column on Setup, beside the profile card) ----------
 const ICON: Record<IdentityStatus, { mark: string; cls: string }> = {
   ok: { mark: "✓", cls: "text-clear" },
@@ -131,6 +162,9 @@ export function IdentityCard({ id, onPick }: { id: IdentityState; onPick: (login
         <span className="chip shrink-0">{r.score}/100</span>
       </div>
 
+      {r.story && <StoryView story={r.story} />}
+
+      <div className="label">Checks</div>
       <ul className="space-y-2 text-sm">
         {r.checks.map((c) => (
           <li key={c.id} className="flex gap-2.5">
