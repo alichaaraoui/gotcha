@@ -49,6 +49,23 @@ export interface Question {
   probeStyle?: ProbeStyle;
   repoRef?: string; // personalized from GitHub
   followUps?: string[]; // ids for "Go deeper"
+  why?: string; // for suggested ideas: what this question reveals, in a few words
+  aiAnswers?: AiAnswer[]; // the same question answered by several AI models (research library)
+}
+
+export interface AiAnswer {
+  model: string; // e.g. "GPT-OSS 120B"
+  text: string;
+}
+
+// Sarah's private bank of off-script questions (her Google Doc, digitized)
+export interface Gotcha {
+  id: string;
+  text: string;
+  topic: string;
+  style: "curveball" | "constraint-change" | "knowledge-boundary" | "own-code" | "other";
+  realAnswer: string; // what a genuine answer sounds like
+  createdAt: number;
 }
 
 export interface Stage {
@@ -172,6 +189,7 @@ export interface Session {
   checklist: Checklist;
   claims: PinnedClaim[];
   verdicts: Record<string, Verdict>; // keyed by flag id
+  identity?: IdentityReport; // Setup: does the profile hold together?
 }
 
 // ---------- Learning from past interviews ----------
@@ -205,6 +223,10 @@ export interface QuestionsRequest {
   profile: CandidateProfile;
   trackId: string;
   custom?: string; // "Ask your own": generate a shadow answer for this text
+  // "Push for more": write one follow-up from their GitHub + the answer that looked off
+  followUp?: { question: string; answer: string; level: Level; reasons: string[] };
+  // "Dig deeper" panel: several ready-to-ask ideas about one repo, or about their last answer
+  ideas?: { focus: "github" | "answer"; repo?: string; lastQuestion?: string; lastAnswer?: string };
 }
 
 export interface QuestionsResponse {
@@ -222,4 +244,62 @@ export interface ScoreRequest {
   checklist: Checklist;
   weights: Weights;
   knownAi: KnownAiAnswer[];
+}
+
+// ---------- Identity consistency (Setup) ----------
+export type IdentityStatus = "ok" | "warn" | "risk" | "unknown";
+
+export interface IdentityCheck {
+  id: "timeline_account" | "timeline_resume" | "location" | "skills" | "copied_text" | "activity";
+  label: string;
+  status: IdentityStatus;
+  why: string; // plain English
+}
+
+/** What the recruiter already has: pasted LinkedIn/resume text and what the candidate claims. LinkedIn stays view-only. */
+export interface IdentityRequest {
+  login?: string;
+  fullName?: string;
+  email?: string;
+  pastedText?: string; // LinkedIn About + Experience + Education, and/or resume
+  claimedLocation?: string;
+  claimedSchool?: string;
+  gradYear?: number;
+}
+
+/** A GitHub account that might be theirs. Shown for the recruiter to confirm, never linked automatically. */
+export interface GithubMatch {
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
+  location: string | null;
+  createdAt: string | null;
+  url: string;
+  why: string; // how we found it
+}
+
+export interface IdentityReport {
+  score: number; // 0..100, higher = more that doesn't line up
+  level: "consistent" | "mixed" | "inconsistent";
+  headline: string;
+  checks: IdentityCheck[];
+  questions: string[]; // to verify identity in the interview
+  matches?: GithubMatch[];
+  githubSource: "live" | "cache" | "fixture" | "none";
+  textSource: "groq" | "heuristic" | "none";
+  story: CandidateStory;
+}
+
+/** Who this person is at a glance: claims merged with GitHub evidence, flags where the story breaks. */
+export interface CandidateStory {
+  summary: string; // 3–4 plain sentences
+  summarySource: "groq" | "facts";
+  timeline: StoryEvent[]; // oldest first
+}
+
+export interface StoryEvent {
+  date: string; // "2008-03", "2023", or "now"
+  label: string;
+  source: "claimed" | "github";
+  flag?: { status: "warn" | "risk"; why: string };
 }

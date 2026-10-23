@@ -10,8 +10,11 @@ export async function groqJson<T>(system: string, user: string, timeoutMs = 4000
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+        // Groq retired Llama 3; gpt-oss-20b is the fast model available on the free plan
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
         temperature: 0.2,
+        max_completion_tokens: 900,
+        ...((process.env.GROQ_MODEL || "openai/gpt-oss-20b").startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
