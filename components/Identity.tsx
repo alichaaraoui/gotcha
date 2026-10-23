@@ -8,6 +8,21 @@ import demo from "@/data/fixtures/identity_demo.json";
 import type { CandidateStory, IdentityReport, IdentityRequest, IdentityStatus, LinkedInSeen, Question } from "@/lib/types";
 
 const KEY = "gotcha.identityInput";
+const META = "gotcha.identityMeta"; // which candidate the saved input was last checked for
+
+interface Meta { ranFor?: string; ranAt: number; editedAt: number }
+const readMeta = (): Meta => {
+  try {
+    return { ranAt: 0, editedAt: 0, ...JSON.parse(localStorage.getItem(META) ?? "{}") };
+  } catch {
+    return { ranAt: 0, editedAt: 0 };
+  }
+};
+const writeMeta = (patch: Partial<Meta>) => {
+  try {
+    localStorage.setItem(META, JSON.stringify({ ...readMeta(), ...patch }));
+  } catch {}
+};
 
 export function useIdentity(login: string, linkedinUrl = "") {
   const { session, update, addQuestions } = useStore();
@@ -19,7 +34,8 @@ export function useIdentity(login: string, linkedinUrl = "") {
     }
   });
   const [loading, setLoading] = useState(false);
-  const setInput = (patch: Partial<IdentityRequest>) =>
+  const setInput = (patch: Partial<IdentityRequest>) => {
+    writeMeta({ editedAt: Date.now() });
     setInputState((i) => {
       const next = { ...i, ...patch };
       try {
@@ -27,12 +43,14 @@ export function useIdentity(login: string, linkedinUrl = "") {
       } catch {}
       return next;
     });
+  };
 
-  async function run(forLogin = login) {
+  async function run(forLogin = login, using = input) {
     setLoading(true);
     try {
-      const r: IdentityReport = await fetch("/api/identity", { method: "POST", body: JSON.stringify({ ...input, linkedinUrl: linkedinUrl.trim() || input.linkedinUrl, login: forLogin.trim() || undefined }) }).then((x) => x.json());
+      const r: IdentityReport = await fetch("/api/identity", { method: "POST", body: JSON.stringify({ ...using, linkedinUrl: linkedinUrl.trim() || using.linkedinUrl, login: forLogin.trim() || undefined }) }).then((x) => x.json());
       update((s) => ({ ...s, identity: r }));
+      writeMeta({ ranFor: forLogin.trim() || "(none)", ranAt: Date.now() });
     } catch {
       // Leave the last report; the card says nothing ran
     } finally {
@@ -46,7 +64,19 @@ export function useIdentity(login: string, linkedinUrl = "") {
   useEffect(() => {
     if (!profileLogin || session.identity || last.current === `${session.id}`) return;
     last.current = `${session.id}`;
-    run(login || profileLogin);
+    const target = login || profileLogin;
+    // New candidate and nothing typed since the last check: that text belongs to the previous person
+    const m = readMeta();
+    // (no record at all = text saved before we tracked this, also stale)
+    if ((m.ranFor && m.ranFor !== target && m.editedAt <= m.ranAt) || (!m.ranFor && !m.editedAt)) {
+      try {
+        localStorage.removeItem(KEY);
+      } catch {}
+      setInputState({});
+      run(target, {});
+      return;
+    }
+    run(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLogin, session.id]);
 
@@ -108,6 +138,11 @@ export function IdentityInputs({ id, linkedinUrl, onDemo }: { id: IdentityState;
     setInput({ pastedText: joinSections(next) });
   };
   const setSection = (k: SectionKey, v: string) => setAll({ ...sections, [k]: v });
+  // Input cleared or replaced outside the boxes (new candidate): show what's actually saved
+  useEffect(() => {
+    if ((input.pastedText ?? "") !== joinSections(sections)) setSections(splitSections(input.pastedText ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input.pastedText]);
   const filled = SECTIONS.filter((x) => sections[x.key].trim()).length;
   const current = SECTIONS.find((x) => x.key === tab)!;
 
