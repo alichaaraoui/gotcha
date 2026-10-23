@@ -28,7 +28,11 @@ export async function POST(req: Request) {
       body,
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return NextResponse.json({ error: `groq ${res.status}` }, { status: 502 });
+    if (!res.ok) {
+      const detail = (await res.text()).slice(0, 300);
+      console.error(`[transcribe] groq ${res.status} (${audio.type}, ${audio.size}B): ${detail}`);
+      return NextResponse.json({ error: `groq ${res.status}`, detail }, { status: res.status === 429 ? 429 : 502 });
+    }
     const data = await res.json();
     // Prefer word timestamps; fall back to spreading segment text evenly
     const words: { w: string; t: number }[] = data.words?.length
