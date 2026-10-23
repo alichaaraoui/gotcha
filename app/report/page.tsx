@@ -134,6 +134,9 @@ export default function Report() {
     <div className="mx-auto max-w-6xl space-y-8 pb-16">
       {/* ───────── 1 · The answer at a glance ───────── */}
       <section className="stage rounded-[32px] p-8">
+        {/* The nav (with the logo) is hidden in the PDF, so brand the printed report here */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/gotcha-logo-light.svg" alt="GotCha" className="print-only mb-6 h-9 w-auto" />
         <div className="flex flex-wrap items-start gap-4">
           <div>
             <div className="label">Interview report</div>
