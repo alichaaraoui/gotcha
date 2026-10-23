@@ -28,6 +28,16 @@ const STAGE_ORDER = ["warmup", "core", "deep", "probe", "wrap"];
 type DemoKey = "organic" | "assisted";
 const scripts = demo as unknown as Record<DemoKey, { label: string; answers: Record<string, { delayMs: number; wpm: number; text: string }> }>;
 
+// Any call that runs in a browser tab works; the picker only tailors the join steps and wording
+const PLATFORMS = [
+  { key: "meet", name: "Google Meet", join: <>Open the <b className="text-white">meet.google.com</b> link in Chrome or Edge. It already runs in the browser.</> },
+  { key: "zoom", name: "Zoom", join: <>Open the Zoom invite, click <b className="text-white">Cancel</b> on the app prompt, then <b className="text-white">Join from your browser</b>.</> },
+  { key: "teams", name: "Microsoft Teams", join: <>Open the Teams link and choose <b className="text-white">Continue on this browser</b>.</> },
+  { key: "webex", name: "Webex", join: <>Open the Webex link and choose <b className="text-white">Join from browser</b>.</> },
+  { key: "other", name: "Other", join: <>Open the call in a Chrome or Edge tab. Any call that runs in a browser tab works.</> },
+] as const;
+type PlatformKey = (typeof PLATFORMS)[number]["key"];
+
 const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
 
 export default function Live() {
@@ -49,13 +59,27 @@ export default function Live() {
   const [answering, setAnswering] = useState<{ q: Question; askedAt: number } | null>(null);
   const [lastAnswered, setLastAnswered] = useState<Question>();
   const [scoring, setScoring] = useState(false);
-  const [source, setSource] = useState<"zoom" | "mic" | DemoKey>("zoom"); // where the candidate's voice comes from
+  const [source, setSource] = useState<"zoom" | "mic" | DemoKey>("zoom"); // where the candidate's voice comes from ("zoom" = any call tab)
+  const [platformKey, setPlatformKey] = useState<PlatformKey>("meet");
+  const platform = PLATFORMS.find((x) => x.key === platformKey) ?? PLATFORMS[0];
+  const callName = platform.key === "other" ? "call" : platform.name; // "Share the call tab", "out of the call"
   const replayKey: DemoKey | "" = source === "organic" || source === "assisted" ? source : "";
   const [showCompare, setShowCompare] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
   const [settings, setSettings] = useState(false);
   const [toast, setToast] = useState<string>();
   const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("gotcha.platform");
+      if (PLATFORMS.some((x) => x.key === saved)) setPlatformKey(saved as PlatformKey);
+    } catch {}
+  }, []);
+  const pickPlatform = (k: PlatformKey) => {
+    setPlatformKey(k);
+    try { localStorage.setItem("gotcha.platform", k); } catch {}
+  };
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -262,20 +286,32 @@ export default function Live() {
 
   return (
     <div className="grid h-[calc(100vh-96px)] min-h-[620px] grid-cols-[1fr_420px] gap-5">
-      {/* ───────── Left: the Zoom call (candidate video + their words) ───────── */}
+      {/* ───────── Left: the call (candidate video + their words) ───────── */}
       <section className={`min-h-0 rounded-[32px] ${needsConnect ? "grid place-items-center border border-dashed border-white/15" : "stage flex flex-col gap-4 p-6"}`}>
         {needsConnect && (
           <div className="w-full max-w-md space-y-6 text-center">
             <div>
-              <p className="text-3xl font-light">Bring your Zoom call in here</p>
-              <p className="mt-2 text-sm text-white/55">GotCha listens to the candidate&apos;s voice coming out of Zoom, never your microphone.</p>
+              <p className="text-3xl font-light">Bring your call in here</p>
+              <p className="mt-2 text-sm text-white/55">GotCha listens to the candidate&apos;s voice coming out of {platform.key === "other" ? "the call" : platform.name}, never your microphone.</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {PLATFORMS.map((x) => (
+                <button
+                  key={x.key}
+                  onClick={() => pickPlatform(x.key)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm transition ${x.key === platform.key ? "bg-white text-slate-900" : "border border-white/15 text-white/65 hover:bg-white/10"}`}
+                >
+                  {x.name}
+                </button>
+              ))}
             </div>
             <ol className="space-y-3 rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-left text-sm text-white/65">
-              <li><b className="text-white">1.</b> Open the Zoom invite and choose <b className="text-white">Join from your browser</b> (Chrome or Edge).</li>
-              <li><b className="text-white">2.</b> Come back here, click <b className="text-white">Share the Zoom tab</b>, and pick that tab.</li>
+              <li><b className="text-white">1.</b> {platform.join}</li>
+              <li><b className="text-white">2.</b> Come back here, click <b className="text-white">Share the {callName} tab</b>, and pick that tab.</li>
               <li><b className="text-white">3.</b> Keep <b className="text-white">Also share tab audio</b> switched on, then click Share.</li>
             </ol>
-            <button className="btn-primary px-6 py-3 text-base" onClick={call.shareCall}>Share the Zoom tab</button>
+            <p className="text-xs text-white/40">Works with any call that runs in a Chrome or Edge tab. Desktop apps and Safari: coming via a meeting bot.</p>
+            <button className="btn-primary px-6 py-3 text-base" onClick={() => call.shareCall(callName)}>Share the {callName} tab</button>
             {call.error && <p className="text-sm text-red-300">{call.error}</p>}
             <p className="text-xs text-white/40">
               Interviewing in person? <button className="underline" onClick={() => setSource("mic")}>Use this laptop&apos;s mic</button> · No call?{" "}
@@ -367,7 +403,7 @@ export default function Live() {
               disabled={scoring || cantListen}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-medium text-slate-900 shadow-lg transition hover:scale-[1.01] disabled:opacity-40"
             >
-              <Icon name="mic" className="h-5 w-5" /> {replayKey ? "Play demo answer" : needsConnect ? "Connect the Zoom call first" : "I asked it · start listening"}
+              <Icon name="mic" className="h-5 w-5" /> {replayKey ? "Play demo answer" : needsConnect ? `Connect the ${platform.key === "other" ? "" : `${callName} `}call first` : "I asked it · start listening"}
             </button>
           ) : (
             <button
@@ -426,7 +462,7 @@ export default function Live() {
             <label className="block space-y-1">
               <span className="text-xs text-slate-500">Listen to</span>
               <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={source} disabled={!!answering} onChange={(e) => setSource(e.target.value as typeof source)}>
-                <option value="zoom">The Zoom tab (candidate only)</option>
+                <option value="zoom">The call tab (candidate only)</option>
                 <option value="mic">This laptop&apos;s mic (in-person interview)</option>
                 <option value="organic">Demo answers · organic candidate</option>
                 <option value="assisted">Demo answers · AI-assisted candidate</option>

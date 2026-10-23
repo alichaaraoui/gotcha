@@ -1,5 +1,6 @@
 "use client";
-// Hears the CANDIDATE, not the recruiter: the recruiter shares the browser tab running Zoom with
+// Hears the CANDIDATE, not the recruiter: the recruiter shares the browser tab running the call
+// (Google Meet, Zoom, Teams, Webex… on the web) with
 // "Also share tab audio". Tab audio only contains the other people on the call (Chrome / Edge).
 // Video → the panel + eye tracking. Audio → ~5s files transcribed by /api/transcribe (Groq Whisper).
 // OWNER: Person 1
@@ -126,8 +127,8 @@ export function useCallCapture() {
     audioStream.current = recordStream.current = audioCtx.current = null;
   };
 
-  /** Share the Zoom tab; its audio is the candidate. */
-  const shareCall = useCallback(async () => {
+  /** Share the call tab; its audio is the candidate. `platform` only names it in the label/errors. */
+  const shareCall = useCallback(async (platform = "call") => {
     setError(undefined);
     try {
       const s = await navigator.mediaDevices.getDisplayMedia({
@@ -139,8 +140,8 @@ export function useCallCapture() {
       setVideo(s);
       s.getVideoTracks()[0]?.addEventListener("ended", () => setVideo(null));
       const tabAudio = s.getAudioTracks();
-      if (tabAudio.length) listenTo(new MediaStream(tabAudio), "Zoom tab audio");
-      else setError('No sound came with that share. Pick the Zoom TAB (not a window) and keep "Also share tab audio" on.');
+      if (tabAudio.length) listenTo(new MediaStream(tabAudio), `${platform} tab audio`);
+      else setError(`No sound came with that share. Pick the ${platform} TAB (not a window) and keep "Also share tab audio" on.`);
     } catch (e) {
       // Say what actually went wrong instead of a generic "cancelled"
       const err = e as DOMException;
