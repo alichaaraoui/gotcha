@@ -16,8 +16,9 @@ export function NavTabs() {
   const path = usePathname();
   return (
     <nav className="no-print flex items-center gap-3 px-8 py-5">
-      <Link href="/" className="mr-6 flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-        <span className="grid h-7 w-7 place-items-center rounded-full border border-white/30 text-xs">✳</span> GotCha
+      <Link href="/" className="mr-6 flex shrink-0 items-center" aria-label="GotCha home">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/gotcha-logo-dark.svg" alt="GotCha" className="h-8 w-auto" />
       </Link>
       {TABS.map((t) => (
         <Link key={t.href} href={t.href} className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs transition ${path === t.href ? "bg-white text-black" : "border border-white/15 text-white/70 hover:text-white"}`}>
