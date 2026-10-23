@@ -16,6 +16,7 @@ import { Timeline } from "@/components/live/Timeline";
 import { AiCompare } from "@/components/live/AiCompare";
 import { StatusBar } from "@/components/live/StatusBar";
 import { Suggestion } from "@/components/live/Suggestion";
+import { DigDeeper } from "@/components/live/DigDeeper";
 import { Icon } from "@/components/Icon";
 import demo from "@/data/demo_scripts.json";
 import type { AnswerEvent, Question, QuestionsResponse, Score, ScoreRequest, WordStamp } from "@/lib/types";
@@ -49,9 +50,7 @@ export default function Live() {
   const [source, setSource] = useState<"zoom" | "mic" | DemoKey>("zoom"); // where the candidate's voice comes from
   const replayKey: DemoKey | "" = source === "organic" || source === "assisted" ? source : "";
   const [showCompare, setShowCompare] = useState(false);
-  const [more, setMore] = useState(false);
-  const [own, setOwn] = useState("");
-  const [claim, setClaim] = useState("");
+  const [settings, setSettings] = useState(false);
   const [toast, setToast] = useState<string>();
   const [now, setNow] = useState(Date.now());
 
@@ -374,55 +373,46 @@ export default function Live() {
           </button>
         </div>
 
-        {/* Everything else, tucked away */}
-        <div className="glass-light overflow-hidden">
-          <button className="flex w-full items-center justify-between px-5 py-3 text-sm" onClick={() => setMore((m) => !m)}>
-            <span>More</span>
-            <span className="text-xs text-slate-500">{more ? "Close" : "Questions, LinkedIn, demo…"}</span>
-          </button>
-          {more && (
-            <div className="space-y-4 border-t border-white/50 px-5 py-4 text-sm">
-              <label className="block space-y-1">
-                <span className="text-xs text-slate-500">Line of questioning</span>
-                <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={session.trackId} disabled={!!answering} onChange={(e) => { store.setTrack(e.target.value); setCurrentId(undefined); }}>
-                  {TRACKS.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </label>
-              <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); if (own.trim()) { askOwn(own.trim()); setOwn(""); } }}>
-                <span className="text-xs text-slate-500">Ask your own question</span>
-                <div className="flex gap-2">
-                  <input className="min-w-0 flex-1 rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none placeholder:text-slate-400" placeholder="Type a question…" value={own} onChange={(e) => setOwn(e.target.value)} />
-                  <button className="rounded-full bg-slate-900 px-4 text-white">Add</button>
-                </div>
-              </form>
-              <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); if (claim.trim()) { pinClaim(claim.trim()); setClaim(""); } }}>
-                <span className="text-xs text-slate-500">Check a LinkedIn claim against their GitHub</span>
-                <div className="flex gap-2">
-                  <input className="min-w-0 flex-1 rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none placeholder:text-slate-400" placeholder='e.g. "5 years of Kafka"' value={claim} onChange={(e) => setClaim(e.target.value)} />
-                  <button className="rounded-full bg-slate-900 px-4 text-white">Check</button>
-                </div>
-                {session.claims.map((c, i) => (
-                  <div key={i} className="text-xs text-slate-600">{c.supportedByGithub === false ? "⚠" : "•"} {c.text}</div>
-                ))}
-              </form>
-              <div className="flex flex-wrap gap-2">
-                {p.linkedinUrl && <button className="chip-light" onClick={() => openDocked(p.linkedinUrl!)}>Open LinkedIn ↗</button>}
-                {p.source !== "fallback" && <button className="chip-light" onClick={() => openDocked(`https://github.com/${p.login}`)}>Open GitHub ↗</button>}
-              </div>
-              <label className="block space-y-1">
-                <span className="text-xs text-slate-500">Listen to</span>
-                <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={source} disabled={!!answering} onChange={(e) => setSource(e.target.value as typeof source)}>
-                  <option value="zoom">The Zoom tab (candidate only)</option>
-                  <option value="mic">This laptop&apos;s mic (in-person interview)</option>
-                  <option value="organic">Demo answers · organic candidate</option>
-                  <option value="assisted">Demo answers · AI-assisted candidate</option>
-                </select>
-              </label>
-            </div>
-          )}
-        </div>
+        {/* Question ideas for digging deeper */}
+        <DigDeeper
+          profile={p}
+          trackId={session.trackId}
+          last={lastAnswered ? { question: lastAnswered, answer: session.events.find((e) => e.questionId === lastAnswered.id)?.transcript ?? "" } : undefined}
+          disabled={!!answering}
+          onAsk={(q) => { store.addQuestions([q]); setCurrentId(q.id); setSwitched(undefined); setToast("Up next. Read it from the card above"); }}
+          onAskOwn={askOwn}
+          onClaim={pinClaim}
+        />
 
-        <Link href="/report" className="mt-auto rounded-full bg-slate-900 py-3 text-center text-sm font-medium text-white hover:bg-slate-800">End interview · see report</Link>
+        {/* Settings, out of the way */}
+        {settings && (
+          <div className="glass-light space-y-3 p-4 text-sm">
+            <label className="block space-y-1">
+              <span className="text-xs text-slate-500">Line of questioning</span>
+              <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={session.trackId} disabled={!!answering} onChange={(e) => { store.setTrack(e.target.value); setCurrentId(undefined); }}>
+                {TRACKS.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-slate-500">Listen to</span>
+              <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={source} disabled={!!answering} onChange={(e) => setSource(e.target.value as typeof source)}>
+                <option value="zoom">The Zoom tab (candidate only)</option>
+                <option value="mic">This laptop&apos;s mic (in-person interview)</option>
+                <option value="organic">Demo answers · organic candidate</option>
+                <option value="assisted">Demo answers · AI-assisted candidate</option>
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {p.linkedinUrl && <button className="chip-light" onClick={() => openDocked(p.linkedinUrl!)}>Open LinkedIn ↗</button>}
+              {p.source !== "fallback" && <button className="chip-light" onClick={() => openDocked(`https://github.com/${p.login}`)}>Open GitHub ↗</button>}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto flex gap-2">
+          <button onClick={() => setSettings((x) => !x)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/60 ${settings ? "bg-white/80" : "bg-white/40"} hover:bg-white/70`} title="Settings">⚙</button>
+          <Link href="/report" className="flex-1 rounded-full bg-slate-900 py-3 text-center text-sm font-medium text-white hover:bg-slate-800">End interview · see report</Link>
+        </div>
       </aside>
 
       {toast && <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-white px-5 py-2.5 text-sm text-slate-900 shadow-2xl">{toast}</div>}

@@ -49,6 +49,7 @@ export interface Question {
   probeStyle?: ProbeStyle;
   repoRef?: string; // personalized from GitHub
   followUps?: string[]; // ids for "Go deeper"
+  why?: string; // for suggested ideas: what this question reveals, in a few words
 }
 
 export interface Stage {
@@ -197,6 +198,8 @@ export interface QuestionsRequest {
   custom?: string; // "Ask your own": generate a shadow answer for this text
   // "Push for more": write one follow-up from their GitHub + the answer that looked off
   followUp?: { question: string; answer: string; level: Level; reasons: string[] };
+  // "Dig deeper" panel: several ready-to-ask ideas about one repo, or about their last answer
+  ideas?: { focus: "github" | "answer"; repo?: string; lastQuestion?: string; lastAnswer?: string };
 }
 
 export interface QuestionsResponse {

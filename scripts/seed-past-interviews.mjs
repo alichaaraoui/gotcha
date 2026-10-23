@@ -30,12 +30,13 @@ for (let i = 0; i < 20; i++) {
     const bump = strongQs.has(q) ? (assisted ? 22 : 3) : 0;
     return { questionId: q, risk: Math.min(99, Math.round(base + bump)) };
   });
+  // Assisted interviews: several flags, mostly confirmed (how often depends on the check).
+  // Genuine interviews: flags are rare (the 2-check rule), and recruiters clear them.
   const flags = [];
-  const nFlags = assisted ? 2 + Math.floor(rnd() * 3) : Math.floor(rnd() * 2);
+  const nFlags = assisted ? 2 + Math.floor(rnd() * 3) : rnd() < 0.15 ? 1 : 0;
   for (let f = 0; f < nFlags; f++) {
     const m = pick(Object.keys(methods));
-    const right = rnd() < methods[m];
-    flags.push({ method: m, verdict: right === assisted ? "suspicious" : "genuine" });
+    flags.push({ method: m, verdict: assisted && rnd() < 0.75 + methods[m] * 0.25 ? "suspicious" : "genuine" });
   }
   // Detection gets faster as the history grows (that's the learning story)
   const minutesToFirstFlag = assisted ? Math.round((14 - i * 0.45 + rnd() * 2) * 10) / 10 : null;
