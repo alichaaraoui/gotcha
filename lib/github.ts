@@ -8,7 +8,8 @@ import fallback from "@/data/fixtures/github_fallback.json";
 import { DEMO_FACTS } from "@/lib/identityGithub";
 import { factsToProfile } from "@/lib/identity";
 
-const CACHE_DIR = join(process.cwd(), "data/cache");
+// Vercel's servers can only write to /tmp; locally the cache lives in data/cache
+const CACHE_DIR = process.env.VERCEL ? "/tmp/gotcha-cache" : join(process.cwd(), "data/cache");
 const headers: Record<string, string> = {
   Accept: "application/vnd.github+json",
   ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
@@ -64,8 +65,7 @@ export async function getProfile(login: string): Promise<CandidateProfile> {
   const file = join(CACHE_DIR, `github_${login.toLowerCase()}.json`);
   try {
     const p = await live(login);
-    await mkdir(CACHE_DIR, { recursive: true });
-    await writeFile(file, JSON.stringify(p, null, 2));
+    await mkdir(CACHE_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(p, null, 2))).catch(() => {}); // a failed cache save never breaks a live lookup
     return p;
   } catch {
     try {

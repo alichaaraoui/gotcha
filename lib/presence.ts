@@ -9,7 +9,8 @@ import type { IdentityRequest } from "@/lib/types";
 import type { PresenceFacts } from "@/lib/identity";
 import demo from "@/data/fixtures/identity_demo.json";
 
-const CACHE_DIR = join(process.cwd(), "data/cache");
+// Vercel's servers can only write to /tmp; locally the cache lives in data/cache
+const CACHE_DIR = process.env.VERCEL ? "/tmp/gotcha-cache" : join(process.cwd(), "data/cache");
 const T = (ms = 4000) => AbortSignal.timeout(ms);
 
 const DEMO: Record<string, PresenceFacts> = Object.fromEntries(Object.values(demo).map((d) => [d.github.login, d.presence as PresenceFacts]));

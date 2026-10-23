@@ -6,7 +6,8 @@ import type { GithubMatch } from "@/lib/types";
 import type { GithubFacts } from "@/lib/identity";
 import demo from "@/data/fixtures/identity_demo.json";
 
-const CACHE_DIR = join(process.cwd(), "data/cache");
+// Vercel's servers can only write to /tmp; locally the cache lives in data/cache
+const CACHE_DIR = process.env.VERCEL ? "/tmp/gotcha-cache" : join(process.cwd(), "data/cache");
 const headers: Record<string, string> = {
   Accept: "application/vnd.github+json",
   ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
@@ -40,8 +41,7 @@ export async function getFacts(login: string): Promise<{ facts: GithubFacts | nu
   const file = join(CACHE_DIR, `identity_${login.toLowerCase()}.json`);
   try {
     const facts = await live(login);
-    await mkdir(CACHE_DIR, { recursive: true });
-    await writeFile(file, JSON.stringify(facts, null, 2));
+    await mkdir(CACHE_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(facts, null, 2))).catch(() => {}); // a failed cache save never breaks a live lookup
     return { facts, source: "live" };
   } catch {
     try {
