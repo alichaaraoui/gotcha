@@ -17,7 +17,7 @@ export function Suggestion({ score, switched, onBack }: { score?: Score; switche
 
   return (
     <div className="rounded-[28px] bg-white p-5 text-slate-900 shadow-[0_20px_60px_-25px_rgba(80,40,90,0.5)]">
-      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">What Unscripted thinks</div>
+      <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">What GotCha thinks</div>
       <p className="mt-2 text-[16px] leading-snug">
         {switched ? switched.why : score ? CALM[score.level] ?? "Keep going with the next question." : "Ask the first question. Easy warm-ups teach it how this person normally talks."}
       </p>

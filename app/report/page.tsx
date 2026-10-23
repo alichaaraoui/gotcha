@@ -19,7 +19,7 @@ export default function Report() {
     const blob = new Blob([JSON.stringify({ session, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `unscripted-${session.id}.json`;
+    a.download = `gotcha-${session.id}.json`;
     a.click();
   };
 

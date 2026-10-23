@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TRACKS, allQuestions, useStore } from "@/lib/store";
 import { useSpeech } from "@/lib/speech";
+import { useCallCapture } from "@/lib/callCapture";
 import { latencyMs, unsupportedClaims, wpm } from "@/lib/scoring/signals";
 import { EyePanel, type EyePanelHandle } from "@/components/EyePanel";
 import { openDocked } from "@/components/LinkedInButton";
@@ -31,6 +32,7 @@ export default function Live() {
   const store = useStore();
   const { session, track, weights, knownAi } = store;
   const speech = useSpeech();
+  const call = useCallCapture();
   const eyes = useRef<EyePanelHandle>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -44,8 +46,8 @@ export default function Live() {
   const [answering, setAnswering] = useState<{ q: Question; askedAt: number } | null>(null);
   const [lastAnswered, setLastAnswered] = useState<Question>();
   const [scoring, setScoring] = useState(false);
-  const [replayKey, setReplayKey] = useState<DemoKey | "">("");
-  const [showPanel, setShowPanel] = useState(false); // candidate panel is optional
+  const [source, setSource] = useState<"zoom" | "mic" | DemoKey>("zoom"); // where the candidate's voice comes from
+  const replayKey: DemoKey | "" = source === "organic" || source === "assisted" ? source : "";
   const [showCompare, setShowCompare] = useState(false);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState("");
@@ -59,8 +61,8 @@ export default function Live() {
   }, []);
   // Get mic permission when the room opens (not mid-answer); skipped in replay mode
   useEffect(() => {
-    if (speech.supported && !replayKey && speech.micReady === null) speech.prepare();
-  }, [speech.supported, replayKey, speech.micReady, speech.prepare]);
+    if (speech.supported && source === "mic" && speech.micReady === null) speech.prepare();
+  }, [speech.supported, source, speech.micReady, speech.prepare]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(undefined), 2200);
@@ -153,14 +155,26 @@ export default function Live() {
       const a = scripts[replayKey].answers[q.id];
       const text = a?.text ?? (replayKey === "organic" ? "hmm okay, honestly I'm not totally sure, I'd have to think about that one for a second" : q.shadowAnswer);
       speech.replay(text, a?.delayMs ?? (replayKey === "organic" ? 1200 : 2000), a?.wpm ?? (replayKey === "organic" ? 130 : 150), (t, w) => finish(q, t, w, askedAt));
+    } else if (source === "zoom") {
+      call.startAnswer(askedAt);
     } else {
       speech.start();
     }
   };
 
-  const done = () => {
-    const { transcript, words } = speech.stop();
-    if (answering) finish(answering.q, transcript, words, answering.askedAt);
+  const [catching, setCatching] = useState(false);
+  const [zoomMode, setZoomMode] = useState<"app" | "tab">("app");
+  const done = async () => {
+    if (!answering) return;
+    if (source === "zoom") {
+      setCatching(true); // the last few seconds of call audio are still being transcribed
+      const { transcript, words } = await call.endAnswer();
+      setCatching(false);
+      finish(answering.q, transcript, words, answering.askedAt);
+    } else {
+      const { transcript, words } = speech.stop();
+      finish(answering.q, transcript, words, answering.askedAt);
+    }
   };
 
   const flagMoment = useCallback(() => {
@@ -206,44 +220,101 @@ export default function Live() {
   const asked = session.trackPath.length;
   const progress = `Question ${Math.min(questions.length, asked + (answering ? 0 : 1))} of ${questions.length}`;
   const compareOpen = showCompare || (latest && latest.level !== "clear");
-  const micBlocked = !replayKey && (!speech.supported || speech.micReady === false);
+  const words = source === "zoom" ? call.transcript : speech.transcript;
+  const listenError = source === "zoom" ? call.error : source === "mic" ? speech.error : undefined;
+  const cantListen =
+    source === "zoom" ? !call.listening : source === "mic" ? !speech.supported || speech.micReady === false : false;
+  const needsConnect = source === "zoom" && !call.listening;
 
   return (
     <div className="grid h-[calc(100vh-96px)] min-h-[620px] grid-cols-[1fr_420px] gap-5">
-      {/* ───────── Left: Zoom goes here, or the optional candidate panel ───────── */}
-      <section className={`min-h-0 rounded-[32px] ${showPanel ? "stage flex flex-col gap-4 p-6" : "grid place-items-center border border-dashed border-white/15"}`}>
-        {!showPanel && (
-          <div className="max-w-sm space-y-3 text-center">
-            <p className="text-2xl font-light">Your Zoom call sits here.</p>
-            <p className="text-sm text-white/50">Keep Unscripted on the right. It listens, and only speaks up when something needs your attention.</p>
-            <button className="btn-ghost" onClick={() => setShowPanel(true)}>Show candidate panel</button>
+      {/* ───────── Left: the Zoom call (candidate video + their words) ───────── */}
+      <section className={`min-h-0 rounded-[32px] ${needsConnect ? "grid place-items-center border border-dashed border-white/15" : "stage flex flex-col gap-4 p-6"}`}>
+        {needsConnect && (
+          <div className="w-full max-w-lg space-y-5">
+            <div className="text-center">
+              <p className="text-3xl font-light">Bring your Zoom call in here</p>
+              <p className="mt-2 text-sm text-white/55">GotCha listens to the candidate&apos;s voice coming out of Zoom, never your microphone.</p>
+            </div>
+            <div className="mx-auto flex w-fit gap-1 rounded-full border border-white/15 p-1 text-sm">
+              {(["app", "tab"] as const).map((m) => (
+                <button key={m} onClick={() => setZoomMode(m)} className={`rounded-full px-4 py-1.5 ${zoomMode === m ? "bg-white text-black" : "text-white/70"}`}>
+                  {m === "app" ? "Zoom app" : "Zoom in a browser tab"}
+                </button>
+              ))}
+            </div>
+
+            {zoomMode === "app" ? (
+              <div className="space-y-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-sm">
+                <div className="space-y-2">
+                  <div className="font-medium">1 · Hear the candidate</div>
+                  <p className="text-white/55">Pick the virtual cable Zoom plays into (usually <b className="text-white/80">BlackHole 2ch</b>).</p>
+                  {call.inputs.length ? (
+                    <select className="input" defaultValue="" onChange={(e) => e.target.value && call.useInput(e.target.value)}>
+                      <option value="" disabled>Choose an audio input…</option>
+                      {call.inputs.map((d) => <option key={d.deviceId} value={d.deviceId}>{d.label}{d.virtual ? "  ✓ recommended" : ""}</option>)}
+                    </select>
+                  ) : (
+                    <button className="btn-primary" onClick={call.loadInputs}>Find audio inputs</button>
+                  )}
+                  {call.inputs.length > 0 && !call.inputs.some((d) => d.virtual) && (
+                    <p className="rounded-2xl bg-amber-400/10 px-3 py-2 text-xs text-amber-200">No virtual cable found. One-time setup: install BlackHole 2ch, then in Zoom → Settings → Audio set <b>Speaker</b> to a Multi-Output Device (your headphones + BlackHole) so you still hear the call.</p>
+                  )}
+                </div>
+                <div className="space-y-2 border-t border-white/10 pt-4">
+                  <div className="font-medium">2 · See the candidate <span className="font-normal text-white/45">(optional, for eye tracking)</span></div>
+                  <button className="btn-ghost" onClick={call.shareCall}>{call.video ? "✓ Zoom window shared" : "Share the Zoom window"}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-3xl border border-white/10 bg-white/[0.04] p-5 text-sm text-white/65">
+                <p><b className="text-white">1.</b> Join the interview in Chrome or Edge (<i>Join from your browser</i>).</p>
+                <p><b className="text-white">2.</b> Click below, pick that tab, and keep <b className="text-white">Also share tab audio</b> on.</p>
+                <button className="btn-primary" onClick={call.shareCall}>Share the Zoom tab</button>
+              </div>
+            )}
+
+            {call.error && <p className="text-center text-sm text-red-300">{call.error}</p>}
+            <p className="text-center text-xs text-white/40">
+              Interviewing in person? <button className="underline" onClick={() => setSource("mic")}>Use this laptop&apos;s mic</button> · No call?{" "}
+              <button className="underline" onClick={() => setSource("assisted")}>Use demo answers</button>
+            </p>
           </div>
         )}
-        {/* EyePanel stays mounted so eye tracking keeps running when the panel is hidden */}
-        <div className={showPanel ? "flex min-h-0 flex-1 flex-col gap-4" : "hidden"}>
+
+        {/* Stays mounted so eye tracking keeps running */}
+        <div className={needsConnect ? "hidden" : "flex min-h-0 flex-1 flex-col gap-4"}>
           <header className="flex items-center gap-3">
             <div>
               <div className="text-xl font-normal">{p.name ?? p.login}</div>
               <div className="text-xs text-white/50">@{p.login} · {session.trackPath.length ? mmss(now - session.startedAt) : "0:00"}</div>
             </div>
-            <button className="chip ml-auto hover:bg-white/20" onClick={() => setShowPanel(false)}>Hide panel</button>
+            <span className="chip ml-auto">
+              <span className={`h-2 w-2 rounded-full ${source === "zoom" ? (call.heard ? "bg-clear" : "bg-watch") : "bg-white/50"}`} />
+              {source === "zoom" ? (call.heard ? `Hearing the candidate · ${call.audioLabel}` : `Waiting for sound · ${call.audioLabel}`) : source === "mic" ? "Laptop mic (same room)" : "Demo answers"}
+            </span>
+            {source === "zoom" && call.listening && !call.video && <button className="chip hover:bg-white/20" onClick={call.shareCall}>Show Zoom window</button>}
+            {source === "zoom" && call.listening && <button className="chip hover:bg-white/20" onClick={call.disconnect}>Disconnect</button>}
           </header>
-          <div className="grid min-h-0 flex-1 grid-cols-[1fr_1fr] gap-4">
-            <div className="min-h-0 [&_.card]:rounded-[28px] [&_.card]:border-white/10 [&_.card]:bg-black/20">
-              <EyePanel ref={eyes} emphasize={!!latest && latest.level !== "clear"} />
+
+          <div className="grid min-h-0 flex-1 grid-cols-[1.4fr_1fr] gap-4">
+            <div className="min-h-0 overflow-y-auto [&_.card]:rounded-[28px] [&_.card]:border-white/10 [&_.card]:bg-black/20">
+              <EyePanel ref={eyes} stream={source === "zoom" ? call.video : null} emphasize={!!latest && latest.level !== "clear"} />
             </div>
             <div className="flex min-h-0 flex-col gap-2">
               {compareOpen ? (
                 <AiCompare
-                  transcript={speech.transcript}
-                  shadow={(answering?.q ?? (speech.transcript ? lastAnswered : undefined) ?? current)?.shadowAnswer ?? ""}
-                  title={answering ? "What they're saying" : "Their last answer"}
+                  transcript={words}
+                  shadow={(answering?.q ?? (words ? lastAnswered : undefined) ?? current)?.shadowAnswer ?? ""}
+                  title={answering ? "What the candidate is saying" : "Their last answer"}
                   emphasize={!!latest && latest.level !== "clear"}
                 />
               ) : (
                 <div className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-white/10 bg-black/20 p-4">
-                  <div className="label mb-2">{answering ? "What they're saying" : "Their last answer"}</div>
-                  <p className="text-[15px] leading-relaxed text-white/90">{speech.transcript || <span className="text-white/35">Words appear here as they speak…</span>}</p>
+                  <div className="label mb-2">{answering ? "What the candidate is saying" : "Their last answer"}</div>
+                  <p className="text-[15px] leading-relaxed text-white/90">
+                    {words || <span className="text-white/35">{answering ? "Listening to the candidate…" : "Their words appear here when you tap start listening."}</span>}
+                  </p>
                 </div>
               )}
               {!(latest && latest.level !== "clear") && (
@@ -273,22 +344,21 @@ export default function Live() {
           {!answering ? (
             <button
               onClick={ask}
-              disabled={scoring || micBlocked}
+              disabled={scoring || cantListen}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-medium text-slate-900 shadow-lg transition hover:scale-[1.01] disabled:opacity-40"
             >
-              <Icon name="mic" className="h-5 w-5" /> {replayKey ? "Play demo answer" : "I asked it · start listening"}
+              <Icon name="mic" className="h-5 w-5" /> {replayKey ? "Play demo answer" : needsConnect ? "Connect the Zoom call first" : "I asked it · start listening"}
             </button>
           ) : (
             <button
               onClick={done}
-              disabled={!!replayKey}
+              disabled={!!replayKey || catching}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 py-3.5 text-[15px] font-medium text-white shadow-lg disabled:opacity-70"
             >
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-rose-400" /> {replayKey ? "Demo answer playing…" : "They finished · check answer"}
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-rose-400" /> {replayKey ? "Demo answer playing…" : catching ? "Catching their last words…" : "They finished · check answer"}
             </button>
           )}
-          {speech.error && <p className="mt-3 rounded-2xl bg-rose-100/80 px-3 py-2 text-xs text-rose-700">{speech.error}</p>}
-          {!replayKey && !speech.supported && <p className="mt-3 text-xs text-slate-600">Live listening needs Chrome. Use a demo answer under More.</p>}
+          {listenError && <p className="mt-3 rounded-2xl bg-rose-100/80 px-3 py-2 text-xs text-rose-700">{listenError}</p>}
         </div>
 
         {/* 3 · What do I do next? */}
@@ -345,13 +415,14 @@ export default function Live() {
               <div className="flex flex-wrap gap-2">
                 {p.linkedinUrl && <button className="chip-light" onClick={() => openDocked(p.linkedinUrl!)}>Open LinkedIn ↗</button>}
                 {p.source !== "fallback" && <button className="chip-light" onClick={() => openDocked(`https://github.com/${p.login}`)}>Open GitHub ↗</button>}
-                <button className="chip-light" onClick={() => setShowPanel((x) => !x)}>{showPanel ? "Hide" : "Show"} candidate panel</button>
               </div>
               <label className="block space-y-1">
-                <span className="text-xs text-slate-500">Demo answers (when there's no mic)</span>
-                <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={replayKey} disabled={!!answering} onChange={(e) => setReplayKey(e.target.value as DemoKey | "")}>
-                  <option value="">Off · use the microphone</option>
-                  {(Object.keys(scripts) as DemoKey[]).filter((k) => !k.startsWith("_")).map((k) => <option key={k} value={k}>{scripts[k].label}</option>)}
+                <span className="text-xs text-slate-500">Listen to</span>
+                <select className="w-full rounded-full border border-white/60 bg-white/60 px-3 py-2 outline-none" value={source} disabled={!!answering} onChange={(e) => setSource(e.target.value as typeof source)}>
+                  <option value="zoom">The Zoom call (candidate only)</option>
+                  <option value="mic">This laptop&apos;s mic (in-person interview)</option>
+                  <option value="organic">Demo answers · organic candidate</option>
+                  <option value="assisted">Demo answers · AI-assisted candidate</option>
                 </select>
               </label>
             </div>
