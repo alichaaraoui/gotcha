@@ -1,4 +1,4 @@
-// Groq via server routes only (model from GROQ_MODEL; this key has no Llama chat models, qwen works). Returns null on any failure (no key, offline, timeout,
+// Groq via server routes only (model from GROQ_MODEL, default gpt-oss-20b; callers can pick another). Returns null on any failure (no key, offline, timeout,
 // bad JSON) so every caller falls back locally. Never throws.
 // OWNER: Person 2
 const URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -23,7 +23,7 @@ export const GROQ_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/g
 
 export async function groqJson<T>(system: string, user: string, opts: GroqOpts | number = {}): Promise<T | null> {
   const { timeoutMs = 4000, temperature = 0.2, maxTokens = 900, model: override, retry429 = false } = typeof opts === "number" ? ({ timeoutMs: opts } as GroqOpts) : opts;
-  const model = override || process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
+  const model = override || process.env.GROQ_MODEL || "openai/gpt-oss-20b"; // Groq retired Llama 3; gpt-oss-20b is fast on the free plan
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
   try {

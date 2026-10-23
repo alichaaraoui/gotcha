@@ -28,7 +28,8 @@ export async function POST(req: Request) {
     ? await groqJson<StyleReply>(
         STYLE_SYSTEM,
         `Question: ${r.question.text}\nAnswer (speech-to-text): ${r.event.transcript.toLowerCase().replace(/[^a-z0-9'\s-]/g, " ")}`,
-        { timeoutMs: 2500, temperature: 0, maxTokens: 150 },
+        // Qwen judges style best (gpt-oss-20b rated an obviously scripted answer 0.2 in our test)
+        { timeoutMs: 2500, temperature: 0, maxTokens: 150, model: process.env.GROQ_STYLE_MODEL || "qwen/qwen3.8-27b" },
       )
     : null;
 

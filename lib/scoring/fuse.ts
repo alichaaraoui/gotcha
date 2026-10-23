@@ -13,7 +13,7 @@ export const NOISE_FLOOR = 0.2; // signal values below this are treated as noise
 const EVIDENCE_SCALE = 2.3; // evidence needed for ~63% risk; tuned on data/demo_scripts.json
 // How much one answer can prove, by question kind. Polished intros and textbook answers to common
 // questions are also what well-prepared humans give; own-code probes and traps are hard to fake.
-export const QUESTION_POWER: Record<Question["kind"], number> = { easy: 0.35, hard: 0.55, custom: 0.6, probe: 1, trap: 1 };
+export const QUESTION_POWER: Record<Question["kind"], number> = { easy: 0.35, hard: 0.5, custom: 0.6, probe: 1, trap: 1 };
 
 export const DEFAULT_WEIGHTS: Weights = {
   eye_reading: 1.0, eye_offscreen: 0.6, eye_baseline: 0.8,

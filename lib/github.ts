@@ -5,6 +5,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CandidateProfile } from "@/lib/types";
 import fallback from "@/data/fixtures/github_fallback.json";
+import { DEMO_FACTS } from "@/lib/identityGithub";
+import { factsToProfile } from "@/lib/identity";
 
 const CACHE_DIR = join(process.cwd(), "data/cache");
 const headers: Record<string, string> = {
@@ -56,7 +58,9 @@ async function live(login: string): Promise<CandidateProfile> {
 }
 
 export async function getProfile(login: string): Promise<CandidateProfile> {
-  if (login === fallback.login || !VALID_LOGIN.test(login)) return { ...(fallback as CandidateProfile), source: "fallback" };
+  if (login === fallback.login) return { ...(fallback as CandidateProfile), source: "fallback" };
+  if (DEMO_FACTS[login]) return factsToProfile(DEMO_FACTS[login]); // identity-check demo candidates, offline
+  if (!VALID_LOGIN.test(login)) return { ...(fallback as CandidateProfile), source: "fallback" }; // never hits network or disk
   const file = join(CACHE_DIR, `github_${login.toLowerCase()}.json`);
   try {
     const p = await live(login);

@@ -40,7 +40,9 @@ const weights = learnWeights(json("data/past_interviews.json")); // the weights 
 const track = tracks[0];
 // Same questions the app asks: track + /api/questions' personalized {repo} probes (offline version)
 const personal = new Map(personalizeTrack(track, profile).map((q) => [q.id, q]));
-const questions = track.stages.flatMap((s) => s.questions).map((q) => personal.get(q.id) ?? q);
+// …plus the AI answer library (several models per question), attached like lib/store.tsx allQuestions does
+const library = json("data/ai_answers.json");
+const questions = track.stages.flatMap((s) => s.questions).map((q) => personal.get(q.id) ?? q).map((q) => (library[q.id] && !q.aiAnswers ? { ...q, aiAnswers: library[q.id].answers } : q));
 const checklist = { earpiece: false, glassesReflection: false, virtualBackground: false, idShown: true };
 
 // Seeded RNG so runs are reproducible

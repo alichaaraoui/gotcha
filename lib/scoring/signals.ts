@@ -187,7 +187,7 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
 
   // 7 AI shadow answer similarity
   {
-    // Compared with every AI answer we have (several models when the question came from the Questions tab)
+    // Compared with every AI answer we have (shadowAnswer + aiAnswers: the AI library and the Questions tab)
     const best = closestShadow(text, q);
     const shared = consensusHits(text, q);
     const consensus = shared.total ? clamp((shared.hits.length - 1) / 4) : 0; // 2+ shared AI phrases start to count

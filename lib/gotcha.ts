@@ -188,7 +188,7 @@ async function groqSet(text: string, styles: GotchaStyle[], model: string, profi
     else if (backup) gotchas.push({ ...backup, id: `gotcha-${id}-${gotchas.length}` });
   }
   return {
-    question: { ...fb.question, kind, stage: stageFor(kind), topic, shadowAnswer: g.shadowAnswer!.trim(), shadowAnswers: [{ model: MODEL_LABEL[model] ?? model, text: g.shadowAnswer!.trim() }, ...others], goodAnswerHint: okText(g.goodAnswerHint, 10, 300) ? g.goodAnswerHint.trim() : fb.question.goodAnswerHint, followUps: gotchas.map((q) => q.id) },
+    question: { ...fb.question, kind, stage: stageFor(kind), topic, shadowAnswer: g.shadowAnswer!.trim(), aiAnswers: [{ model: MODEL_LABEL[model] ?? model, text: g.shadowAnswer!.trim() }, ...others], goodAnswerHint: okText(g.goodAnswerHint, 10, 300) ? g.goodAnswerHint.trim() : fb.question.goodAnswerHint, followUps: gotchas.map((q) => q.id) },
     gotchas,
     source: "groq",
   };

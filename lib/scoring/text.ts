@@ -49,13 +49,13 @@ export function overlapIndexes(answer: string, shadow: string): Set<number> {
 }
 
 /** Every AI answer we have for a question: the main shadowAnswer plus any other models' answers. */
-export function shadowsOf(q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { model: string; text: string }[] {
-  const out = [{ model: "AI", text: q.shadowAnswer }, ...(q.shadowAnswers ?? [])].filter((s) => s.text?.trim());
+export function shadowsOf(q: Pick<Question, "shadowAnswer" | "aiAnswers">): { model: string; text: string }[] {
+  const out = [{ model: "AI", text: q.shadowAnswer }, ...(q.aiAnswers ?? [])].filter((s) => s.text?.trim());
   return out.filter((s, i) => out.findIndex((x) => x.text.trim() === s.text.trim()) === i);
 }
 
 /** The AI answer this transcript is closest to (and how close). */
-export function closestShadow(transcript: string, q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { model: string; text: string; similarity: number; of: number } {
+export function closestShadow(transcript: string, q: Pick<Question, "shadowAnswer" | "aiAnswers">): { model: string; text: string; similarity: number; of: number } {
   const all = shadowsOf(q);
   let best = { ...all[0] ?? { model: "AI", text: "" }, similarity: 0 };
   for (const s of all) {
@@ -69,7 +69,7 @@ export function closestShadow(transcript: string, q: Pick<Question, "shadowAnswe
  * Phrasing several AI models agree on for this question (3-word phrases found in 2+ of their answers,
  * not just filler words), and how many of them the transcript uses. Catches paraphrased or other-model answers.
  */
-export function consensusHits(transcript: string, q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { hits: string[]; total: number } {
+export function consensusHits(transcript: string, q: Pick<Question, "shadowAnswer" | "aiAnswers">): { hits: string[]; total: number } {
   const all = shadowsOf(q);
   if (all.length < 3) return { hits: [], total: 0 };
   const count = new Map<string, number>();
