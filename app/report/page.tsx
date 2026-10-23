@@ -97,7 +97,8 @@ export default function Report() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">Interview report · {session.profile?.name ?? session.profile?.login ?? "candidate"}</h1>
         <span className="text-sm text-slate-400">Peak risk {maxRisk}% · {session.flags.length} flags · {session.events.length} answers</span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="no-print ml-auto flex items-center gap-2">
+          <button className="btn-ghost" onClick={() => window.print()}>Save as PDF</button>
           <button className="btn-ghost" onClick={exportDataset}>Export dataset (JSON)</button>
           <button className="btn-primary" onClick={() => { finishInterview(); setSaved(true); }}>Save verdicts to memory</button>
         </div>
