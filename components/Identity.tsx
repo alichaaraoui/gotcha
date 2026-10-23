@@ -99,7 +99,7 @@ const joinSections = (s: Sections) =>
 
 export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (login: string) => void }) {
   const { input, setInput } = id;
-  const [open, setOpen] = useState(!!input.pastedText);
+  const [open, setOpen] = useState(false); // closed until the recruiter opens it
   const [tab, setTab] = useState<SectionKey>("about");
   // Raw text per box (not re-split on every keystroke, so Enter and spaces stay put)
   const [sections, setSections] = useState<Sections>(() => splitSections(input.pastedText ?? ""));
@@ -132,23 +132,33 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
   };
 
   return (
-    <div className="space-y-3 rounded-3xl border border-white/10 bg-black/15 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <button className="text-left" onClick={() => setOpen(!open)}>
-          <div className="label">{open ? "▾" : "▸"} Identity check · optional</div>
-          <div className="mt-1 text-sm text-white/60">
-            {open ? "Copy what you see on their LinkedIn or resume. We compare it with their GitHub." : filled ? `${filled} of 4 sections pasted${input.fullName ? ` for ${input.fullName}` : ""}` : "Paste their LinkedIn or resume to check it against GitHub, or find their GitHub by name."}
+    <div className={`overflow-hidden rounded-3xl border transition ${open ? "border-white/20 bg-black/20" : "border-white/10 bg-black/15 hover:border-white/25 hover:bg-black/25"}`}>
+      <button className="flex w-full items-center gap-4 p-5 text-left" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="identity-panel">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="label">Identity check</span>
+            <span className="chip py-0.5 text-[10px]">Optional</span>
           </div>
-        </button>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-white/40">Try:</span>
-          <button className="chip hover:bg-white/15" onClick={() => fill(demo.clean)}>{demo.clean.label}</button>
-          <button className="chip hover:bg-white/15" onClick={() => fill(demo.suspicious)}>{demo.suspicious.label}</button>
+          <div className="mt-1 text-sm text-white/60">
+            {filled ? `${filled} of 4 LinkedIn sections pasted${input.fullName ? ` for ${input.fullName}` : ""}` : "Paste their LinkedIn or resume to check it against GitHub, or find their GitHub by name."}
+          </div>
         </div>
-      </div>
+        <span className="hidden text-xs text-white/50 sm:inline">{open ? "Hide" : "Open"}</span>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/20 text-white/80 transition-transform duration-200 ${open ? "rotate-180 bg-white/10" : ""}`} aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </span>
+      </button>
 
       {open && (
-        <>
+        <div id="identity-panel" className="space-y-4 border-t border-white/10 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-white/60">Copy what you see on their LinkedIn or resume. We compare it with their GitHub.</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-white/40">Or load a sample:</span>
+              <button className="chip hover:bg-white/15" onClick={() => fill(demo.clean)}>{demo.clean.label}</button>
+              <button className="chip hover:bg-white/15" onClick={() => fill(demo.suspicious)}>{demo.suspicious.label}</button>
+            </div>
+          </div>
           <div>
             <div className="flex flex-wrap gap-1.5" role="tablist">
               {SECTIONS.map((x) => (
@@ -197,7 +207,7 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
             <span className="text-xs text-white/45">No GitHub username above? We&apos;ll search GitHub by name and email for you to confirm.</span>
             {(filled > 0 || input.fullName) && <button className="ml-auto text-xs text-white/40 hover:text-white/70" onClick={clear}>Clear all</button>}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
