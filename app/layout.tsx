@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <head>
         {/* Already seen the intro this session? Hide it before the first paint (no flash). */}
-        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${SPLASH_KEY}"))document.documentElement.classList.add("no-splash")}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem("${SPLASH_KEY}"))document.write("<style>.splash{display:none!important}</style>")}catch(e){}` }} />
       </head>
       <body className="font-light">
         <Splash />

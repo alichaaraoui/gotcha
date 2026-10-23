@@ -45,8 +45,9 @@ export default function Setup() {
   }
 
   return (
-    <div className="grid min-h-[calc(100vh-96px)] grid-cols-1 gap-5 lg:grid-cols-[1fr_440px]">
-      <section className="stage flex flex-col gap-6 rounded-[32px] p-8">
+    // On laptops each side scrolls on its own, so the checklist and Start interview never fall below the fold
+    <div className="grid grid-cols-1 gap-5 lg:h-[calc(100vh-104px)] lg:grid-cols-[1fr_440px]">
+      <section className="stage flex flex-col gap-6 rounded-[32px] p-8 lg:min-h-0 lg:overflow-y-auto">
         <div>
           <div className="label">Before the call</div>
           <h1 className="mt-1 text-4xl font-light tracking-tight">Who are you interviewing?</h1>
@@ -71,22 +72,25 @@ export default function Setup() {
             </div>
           </div>
           <div>
-            <button className="btn-primary px-6 py-3" onClick={lookup} disabled={loading}>{loading ? "Reading their GitHub…" : "Load candidate"}</button>
+            <button className="btn-primary w-full !py-4 !text-base font-medium" onClick={lookup} disabled={loading}>{loading ? "Reading their GitHub…" : "Load candidate"}</button>
             {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
           </div>
-        </div>
-        <div className="mt-auto max-w-2xl [&_.card]:bg-black/20">
-          <Checklist value={session.checklist} onChange={(c) => update((s) => ({ ...s, checklist: c }))} />
+          <div className="[&_.card]:bg-black/20">
+            <Checklist value={session.checklist} onChange={(c) => update((s) => ({ ...s, checklist: c }))} />
+          </div>
         </div>
       </section>
 
-      <aside className="flex flex-col gap-4">
-        {p ? <ProfileCard p={p} /> : <div className="card text-sm text-white/50">The candidate&apos;s GitHub profile shows up here.</div>}
-        {p && qSource && <p className="px-2 text-sm text-white/60">✓ {qSource}</p>}
-        <IdentityCard id={identity} onPick={setLogin} />
-        {p && <LinkedInButton url={p.linkedinUrl} githubLogin={p.source === "fallback" ? undefined : p.login} />}
-        <BriefCard history={history} track={track} />
-        {p && <button className="btn-primary mt-auto py-4 text-base" onClick={() => router.push("/live")}>Start interview →</button>}
+      <aside className="flex flex-col gap-4 lg:min-h-0">
+        <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+          {p ? <ProfileCard p={p} /> : <div className="card text-sm text-white/50">The candidate&apos;s GitHub profile shows up here.</div>}
+          {p && qSource && <p className="px-2 text-sm text-white/60">✓ {qSource}</p>}
+          <IdentityCard id={identity} onPick={setLogin} />
+          {p && <LinkedInButton url={p.linkedinUrl} githubLogin={p.source === "fallback" ? undefined : p.login} />}
+          <BriefCard history={history} track={track} />
+        </div>
+        {/* Always visible, however long the cards above get */}
+        {p && <button className="btn-primary shrink-0 !py-4 !text-base font-medium shadow-[0_-12px_30px_-10px_rgba(0,0,0,0.8)]" onClick={() => router.push("/live")}>Start interview →</button>}
       </aside>
     </div>
   );

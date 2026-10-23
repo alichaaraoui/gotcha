@@ -11,6 +11,7 @@ export function Splash() {
 
   useEffect(() => {
     try {
+      if (sessionStorage.getItem(SPLASH_KEY)) return setGone(true); // already seen this session
       sessionStorage.setItem(SPLASH_KEY, "1");
     } catch {}
     const t = setTimeout(() => setGone(true), 2200); // after the CSS fade-out finishes
