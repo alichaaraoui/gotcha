@@ -13,7 +13,9 @@ export async function POST(req: Request) {
   if (!audio || audio.size < 2000) return NextResponse.json({ words: [] }); // silence / too short
 
   const body = new FormData();
-  body.append("file", audio, "chunk.webm");
+  // Keep the real file type (Chrome/Edge send webm, Safari sends mp4)
+  const name = (audio as File).name && (audio as File).name !== "blob" ? (audio as File).name : audio.type.includes("mp4") ? "chunk.mp4" : "chunk.webm";
+  body.append("file", audio, name);
   body.append("model", process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo");
   body.append("response_format", "verbose_json");
   body.append("timestamp_granularities[]", "word");
