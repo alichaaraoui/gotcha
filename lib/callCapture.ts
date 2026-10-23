@@ -17,7 +17,9 @@ export function useCallCapture() {
   const words = useRef<WordStamp[]>([]);
   const chunks = useRef<{ startedAt: number; words: WordStamp[] }[]>([]);
   const markAt = useRef<number | null>(null); // start of the current answer
-  const audioStream = useRef<MediaStream | null>(null);
+  const audioStream = useRef<MediaStream | null>(null); // the shared tab's audio
+  const recordStream = useRef<MediaStream | null>(null); // Web Audio copy we actually record
+  const audioCtx = useRef<AudioContext | null>(null);
   const running = useRef(false);
 
   const answerWords = (from: number) => words.current.filter((x) => x.t >= from - 300);
@@ -47,9 +49,19 @@ export function useCallCapture() {
   };
 
   // A fresh MediaRecorder per chunk, so every chunk is a complete, decodable file
-  const loop = (audio: MediaStream) => {
-    if (!running.current || audioStream.current !== audio) return;
-    const rec = new MediaRecorder(audio);
+  const loop = (audio: MediaStream, failures = 0) => {
+    if (!running.current || recordStream.current !== audio) return;
+    let rec: MediaRecorder;
+    try {
+      rec = new MediaRecorder(audio);
+      rec.start();
+    } catch (e) {
+      // Never crash the page over a recorder hiccup: retry a few times, then explain
+      console.error("recorder failed", e);
+      if (failures < 5) setTimeout(() => loop(audio, failures + 1), 400);
+      else setError("Couldn't record the call audio. Click Disconnect and share the tab again.");
+      return;
+    }
     const startedAt = Date.now();
     const parts: Blob[] = [];
     rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
@@ -57,17 +69,30 @@ export function useCallCapture() {
       transcribe(new Blob(parts, { type: rec.mimeType || "audio/webm" }), startedAt);
       loop(audio);
     };
-    rec.start();
     setTimeout(() => rec.state === "recording" && rec.stop(), CHUNK_MS);
   };
 
   const listenTo = (audio: MediaStream, label: string) => {
-    audioStream.current?.getTracks().forEach((t) => t.stop());
+    stopAudio();
+    // Chrome won't reliably record a shared tab's audio track directly, so pass it through
+    // Web Audio and record that copy. (Not connected to the speakers: no double playback.)
+    const ctx = new AudioContext();
+    const dest = ctx.createMediaStreamDestination();
+    ctx.createMediaStreamSource(audio).connect(dest);
+    audioCtx.current = ctx;
     audioStream.current = audio;
+    recordStream.current = dest.stream;
     running.current = true;
     setAudioLabel(label);
     setHeard(false);
-    loop(audio);
+    loop(dest.stream);
+  };
+
+  const stopAudio = () => {
+    running.current = false;
+    audioStream.current?.getTracks().forEach((t) => t.stop());
+    audioCtx.current?.close().catch(() => {});
+    audioStream.current = recordStream.current = audioCtx.current = null;
   };
 
   /** Share the Zoom tab; its audio is the candidate. */
@@ -85,15 +110,22 @@ export function useCallCapture() {
       const tabAudio = s.getAudioTracks();
       if (tabAudio.length) listenTo(new MediaStream(tabAudio), "Zoom tab audio");
       else setError('No sound came with that share. Pick the Zoom TAB (not a window) and keep "Also share tab audio" on.');
-    } catch {
-      setError("Sharing was cancelled.");
+    } catch (e) {
+      // Say what actually went wrong instead of a generic "cancelled"
+      const err = e as DOMException;
+      console.error("share failed", err.name, err.message);
+      setError(
+        err.name === "NotAllowedError" && /system/i.test(err.message)
+          ? "macOS is blocking Chrome from capturing the screen. Pick a Chrome Tab instead (no permission needed), or allow Chrome in System Settings → Privacy & Security → Screen & System Audio Recording, then restart Chrome."
+          : err.name === "NotAllowedError"
+            ? "Sharing didn't start. In Chrome's popup choose the Chrome Tab with the call, then click Share."
+            : `Sharing failed (${err.name}): ${err.message}`
+      );
     }
   }, []);
 
   const disconnect = useCallback(() => {
-    running.current = false;
-    audioStream.current?.getTracks().forEach((t) => t.stop());
-    audioStream.current = null;
+    stopAudio();
     setVideo((v) => {
       v?.getTracks().forEach((t) => t.stop());
       return null;

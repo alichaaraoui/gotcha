@@ -11,6 +11,16 @@ node scripts/score-demo.mjs  # offline: risk per answer for both demo candidates
 ```
 `score-demo.mjs` imports the real scorer (no server needed) and replays each candidate 30× with the same word-timing jitter as replay mode. Flags: `--verbose` (every signal + suggestion), `--gaze` (webcam path), `--stt` (simulated live Chrome mic: no punctuation, bursty word stamps), `--url http://localhost:3000` (through `/api/score`, uses Groq if keyed). Re-run it after touching anything in `lib/scoring/`.
 
+## Test it like a recruiter (Chrome or Edge)
+1. `.env.local` must contain `GROQ_API_KEY=gsk_...` (ask Ali privately; never commit it). Restart `npm run dev` after adding it.
+2. **Setup** → leave username blank (demo candidate) or type a GitHub username → **Load candidate** → **Start interview**.
+3. Join a Zoom call **in a Chrome tab** (*Join from your browser*). To test alone, play a YouTube video of someone talking instead.
+4. In GotCha click **Share the Zoom tab** → pick **Chrome Tab** (not Window/Screen) → keep **Also share tab audio** on → **Share**.
+5. Wait for the green **Hearing the candidate** chip, then: **I asked it · start listening** → let them answer → **They finished · check answer**.
+6. No call handy? **More → Listen to → Demo answers** plays scripted organic / AI-assisted candidates.
+
+Safari and Firefox can't share a tab's audio, so live listening needs Chrome, Edge, Brave or Arc.
+
 ## Who owns what (search the code for TODO(P1/P2/P3))
 | Person | Owns |
 |---|---|
