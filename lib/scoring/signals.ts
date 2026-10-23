@@ -2,7 +2,7 @@
 // Each value is 0..1 "how suspicious"; fuse.ts treats anything under ~0.2 as noise.
 // OWNER: Person 2 (eye methods 1–3 consume Person 3's GazeWindow)
 import type { ScoreRequest, Signal, CandidateProfile, Question } from "@/lib/types";
-import { fillerRate, fluentStart, llmStyleHeuristic, normalize, similarity, words } from "./text";
+import { closestShadow, consensusHits, fillerRate, fluentStart, llmStyleHeuristic, normalize, words } from "./text";
 
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -84,6 +84,12 @@ function githubText(profile: CandidateProfile): string {
   ].join(" ").toLowerCase();
 }
 
+/** Tech names mentioned in some text ("Postgres", "Kafka"), in list order. */
+export function techMentioned(text: string): string[] {
+  const t = normalize(text);
+  return TECH.filter((x) => x.said.test(t)).map((x) => x.name);
+}
+
 /** Tech the candidate claims in the answer that shows up nowhere in their GitHub. */
 export function unsupportedClaims(text: string, profile: CandidateProfile | null): string[] {
   if (!profile || !profile.repos.length) return [];
@@ -117,6 +123,10 @@ function repoSpecifics(text: string, q: Question, profile: CandidateProfile | nu
   const files = (text.match(/\b[\w-]+\.(py|go|ts|tsx|js|jsx|rs|java|rb|sql|yml|yaml|toml|json|lua|sh)\b/gi) ?? []).length;
   return { repo: repo.name, hits: hits + files * 2 };
 }
+
+/** "Never heard of it" / "I'd have to look it up": the honest answer to a trap question. */
+const HONEST = /\b(not sure|never heard|haven't heard|don't think|don't know|do not know|haven't used|never used|look it up|doesn't exist|does not exist|no idea|not familiar)\b/;
+export const admitsNotKnowing = (text: string) => HONEST.test(normalize(text));
 
 export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: number; why: string }): Signal[] {
   const out: Signal[] = [];
@@ -177,8 +187,13 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
 
   // 7 AI shadow answer similarity
   {
-    const sim = similarity(text, q.shadowAnswer);
-    out.push({ method: "ai_similarity", value: clamp((sim - 0.1) * 1.6), why: `${(sim * 100).toFixed(0)}% overlap with what an AI would say` });
+    // Compared with every AI answer we have (several models when the question came from the Questions tab)
+    const best = closestShadow(text, q);
+    const shared = consensusHits(text, q);
+    const consensus = shared.total ? clamp((shared.hits.length - 1) / 4) : 0; // 2+ shared AI phrases start to count
+    const value = Math.max(clamp((best.similarity - 0.1) * 1.6), consensus);
+    const who = best.of > 1 ? ` (closest: ${best.model}, of ${best.of} AI answers)` : "";
+    out.push({ method: "ai_similarity", value, why: consensus > clamp((best.similarity - 0.1) * 1.6) ? `Uses ${shared.hits.length} phrases that several AI models all used, like "${shared.hits[0]}"` : `${(best.similarity * 100).toFixed(0)}% overlap with what an AI would say${who}` });
   }
 
   // 8 LLM style (Groq when available, else heuristic). Trap questions fold in here: confidently
@@ -189,7 +204,7 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
       return { value: h.value, why: h.markers.length ? `Chatbot-style phrasing: "${h.markers.slice(0, 3).join('", "')}"` : h.value > 0.3 ? "Polished, list-like wording with no thinking out loud" : "Sounds like natural speech" };
     })();
     if (q.kind === "trap" && n >= 6) {
-      const honest = /\b(not sure|never heard|haven't heard|don't think|don't know|do not know|haven't used|never used|look it up|doesn't exist|does not exist|no idea|not familiar)\b/.test(normalize(text));
+      const honest = admitsNotKnowing(text);
       style = honest
         ? { value: Math.min(style.value, 0.1), why: "Admitted not knowing the made-up feature (honest)" }
         : { value: Math.max(style.value, 0.95), why: "Confidently described a feature that doesn't exist" };
@@ -216,10 +231,13 @@ export function computeSignals(r: ScoreRequest, llmStyleOverride?: { value: numb
 
   // 10 Easy vs hard: a hard question answered as fast and smoothly as the easy ones is backwards.
   // (Skipped for "your own code": the real author SHOULD answer that quickly.)
-  if (r.easyVsHard && !easy && !ownCode) {
+  // (Also skipped for an honest "never heard of it" on a trap: that answer is naturally quick.)
+  if (r.easyVsHard && !easy && !ownCode && !(q.kind === "trap" && admitsNotKnowing(text))) {
     const latRatio = lat / Math.max(300, r.easyVsHard.easyLatencyMs);
     const rateRatio = rate / Math.max(60, r.easyVsHard.easyWpm);
-    const value = clamp((1.6 - latRatio) / 0.6) * 0.6 + clamp((rateRatio - 0.92) / 0.1) * 0.4;
+    // Fast is only suspicious when it's also smooth: a quick answer full of "um"s and hedges is a fast thinker
+    const smooth = Math.max(0.25, clamp(1 - fillerRate(text) / 2));
+    const value = (clamp((1.6 - latRatio) / 0.6) * 0.6 + clamp((rateRatio - 0.92) / 0.1) * 0.4) * smooth;
     out.push({ method: "easy_vs_hard", value: clamp(value * short), why: latRatio < 1.4 ? `Hard question answered as fast as the easy ones (${latRatio.toFixed(1)}× their warm-up delay)` : "Took longer on the hard question than the easy ones (normal)" });
   }
 

@@ -10,6 +10,7 @@ import { TRACKS, allQuestions, useStore } from "@/lib/store";
 import { useSpeech } from "@/lib/speech";
 import { useCallCapture } from "@/lib/callCapture";
 import { latencyMs, unsupportedClaims, wpm } from "@/lib/scoring/signals";
+import { shadowsOf } from "@/lib/scoring/text";
 import { EyePanel, type EyePanelHandle } from "@/components/EyePanel";
 import { openDocked } from "@/components/LinkedInButton";
 import { Timeline } from "@/components/live/Timeline";
@@ -37,9 +38,10 @@ export default function Live() {
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  // Track questions + GitHub/custom ones, in stage order
+  // Track questions + GitHub/custom ones, in stage order; the recruiter's own (Questions tab) lead each stage
+  const mineFirst = (q: Question) => (q.id.startsWith("mine-") ? 0 : 1);
   const questions = useMemo(
-    () => allQuestions(track, session).map((q, i) => ({ q, i })).sort((a, b) => STAGE_ORDER.indexOf(a.q.stage) - STAGE_ORDER.indexOf(b.q.stage) || a.i - b.i).map((x) => x.q),
+    () => allQuestions(track, session).map((q, i) => ({ q, i })).sort((a, b) => STAGE_ORDER.indexOf(a.q.stage) - STAGE_ORDER.indexOf(b.q.stage) || mineFirst(a.q) - mineFirst(b.q) || a.i - b.i).map((x) => x.q),
     [track, session]
   );
   const [currentId, setCurrentId] = useState<string>();
@@ -49,6 +51,7 @@ export default function Live() {
   const [source, setSource] = useState<"zoom" | "mic" | DemoKey>("zoom"); // where the candidate's voice comes from
   const replayKey: DemoKey | "" = source === "organic" || source === "assisted" ? source : "";
   const [showCompare, setShowCompare] = useState(false);
+  const [showAnswers, setShowAnswers] = useState(false);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState("");
   const [claim, setClaim] = useState("");
@@ -153,7 +156,9 @@ export default function Live() {
     setAnswering({ q, askedAt });
     if (replayKey) {
       const a = scripts[replayKey].answers[q.id];
-      const text = a?.text ?? (replayKey === "organic" ? "hmm okay, honestly I'm not totally sure, I'd have to think about that one for a second" : q.shadowAnswer);
+      // Unscripted questions: the "assisted" demo reads one of the AI answers (any model, like a real candidate might)
+      const ai = shadowsOf(q);
+      const text = a?.text ?? (replayKey === "organic" ? "hmm okay, honestly I'm not totally sure, I'd have to think about that one for a second" : ai[Math.floor(Math.random() * ai.length)]?.text ?? q.shadowAnswer);
       speech.replay(text, a?.delayMs ?? (replayKey === "organic" ? 1200 : 2000), a?.wpm ?? (replayKey === "organic" ? 130 : 150), (t, w) => finish(q, t, w, askedAt));
     } else if (source === "zoom") {
       call.startAnswer(askedAt);
@@ -225,6 +230,8 @@ export default function Live() {
     source === "zoom" ? !call.listening : source === "mic" ? !speech.supported || speech.micReady === false : false;
   const needsConnect = source === "zoom" && !call.listening;
 
+  const compareQ = answering?.q ?? (words ? lastAnswered : undefined) ?? current;
+
   return (
     <div className="grid h-[calc(100vh-96px)] min-h-[620px] grid-cols-[1fr_420px] gap-5">
       {/* ───────── Left: the Zoom call (candidate video + their words) ───────── */}
@@ -270,8 +277,10 @@ export default function Live() {
             <div className="flex min-h-0 flex-col gap-2">
               {compareOpen ? (
                 <AiCompare
+                  key={compareQ?.id}
                   transcript={words}
-                  shadow={(answering?.q ?? (words ? lastAnswered : undefined) ?? current)?.shadowAnswer ?? ""}
+                  shadow={compareQ?.shadowAnswer ?? ""}
+                  shadows={compareQ ? shadowsOf(compareQ) : undefined}
                   title={answering ? "What the candidate is saying" : "Their last answer"}
                   emphasize={!!latest && latest.level !== "clear"}
                 />
@@ -306,6 +315,23 @@ export default function Live() {
           </div>
           <p className="mt-2 text-[21px] font-normal leading-snug text-slate-900">{shown?.text}</p>
           {!answering && <p className="mt-2 text-xs leading-relaxed text-slate-600">A real answer: {shown?.goodAnswerHint}</p>}
+          {shown && (
+            <div className="mt-2">
+              <button className="text-xs text-slate-500 underline-offset-2 hover:underline" onClick={() => setShowAnswers((x) => !x)}>
+                {showAnswers ? "Hide" : "Show"} {shadowsOf(shown).length > 1 ? `${shadowsOf(shown).length} possible AI answers` : "what an AI would say"}
+              </button>
+              {showAnswers && (
+                <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
+                  {shadowsOf(shown).map((a, i) => (
+                    <div key={i} className="rounded-2xl bg-white/50 p-3 text-xs leading-relaxed text-slate-700">
+                      {shadowsOf(shown).length > 1 && <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">{a.model}</div>}
+                      {a.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {!answering ? (
             <button

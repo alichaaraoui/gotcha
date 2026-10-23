@@ -51,6 +51,7 @@ interface Store {
   setProfile: (p: CandidateProfile) => void;
   setTrack: (id: string) => void;
   addQuestions: (qs: Question[]) => void;
+  removeQuestion: (qid: string) => void;
   markAsked: (qid: string) => void;
   recordAnswer: (e: AnswerEvent, g: GazeWindow | null, sc: Score) => void;
   addFlag: (f: Omit<Flag, "id">) => Flag;
@@ -94,6 +95,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTrack: (id) => update((s) => ({ ...s, trackId: id })),
     addQuestions: (qs) => update((s) => ({ ...s, questions: [...s.questions.filter((q) => !qs.some((n) => n.id === q.id)), ...qs] })),
     // The interview clock starts at the first question asked (used for "minutes to first flag")
+    removeQuestion: (qid) => update((s) => ({ ...s, questions: s.questions.filter((q) => q.id !== qid) })),
     markAsked: (qid) => update((s) => (s.trackPath.includes(qid) ? s : { ...s, startedAt: s.trackPath.length ? s.startedAt : Date.now(), trackPath: [...s.trackPath, qid] })),
     recordAnswer: (e, g, sc) =>
       update((s) => ({

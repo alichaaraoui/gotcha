@@ -7,6 +7,7 @@
 //   --gaze     add calm/reading gaze windows, to check the webcam path doesn't move the result
 //   --stt      simulate live Chrome mic instead of replay: lowercase/no punctuation, words in bursts, +400ms lag
 //   --url      score through a running /api/score instead (exercises Groq if GROQ_API_KEY is set)
+//   --pace ms  with --url: wait between answers (free Groq tier: ~1000 output tokens/min, try 7000)
 import { register } from "node:module";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,6 +29,7 @@ const VERBOSE = process.argv.includes("--verbose");
 const GAZE = process.argv.includes("--gaze");
 const STT = process.argv.includes("--stt");
 const URL = arg("--url", null);
+const PACE = Number(arg("--pace", 0));
 
 const json = (p) => JSON.parse(readFileSync(join(root, p), "utf8"));
 const tracks = json("data/tracks.json");
@@ -71,6 +73,7 @@ function gazeFor(key, q) {
 
 async function score(body) {
   if (!URL) return scoreAnswer(body, null);
+  if (PACE) await new Promise((r) => setTimeout(r, PACE));
   return fetch(`${URL}/api/score`, { method: "POST", body: JSON.stringify(body) }).then((r) => r.json());
 }
 

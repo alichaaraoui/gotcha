@@ -45,6 +45,7 @@ export interface Question {
   stage: StageId;
   topic: string; // e.g. "caching", used by "Go deeper"
   shadowAnswer: string; // what an AI would say
+  shadowAnswers?: { model: string; text: string }[]; // optional: several AI models' answers (P2, Questions tab); shadowAnswer stays the main one
   goodAnswerHint: string; // plain English, for recruiters who aren't engineers
   probeStyle?: ProbeStyle;
   repoRef?: string; // personalized from GitHub

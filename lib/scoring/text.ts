@@ -2,6 +2,7 @@
 // Everything here works on STT-style text (lowercase, no punctuation), so replay mode's
 // punctuated scripts and Chrome's raw transcripts score the same way.
 // OWNER: Person 2
+import type { Question } from "@/lib/types";
 
 const STOP = new Set("a an the and or but of to in on for with is are was were be been it this that i you we they my our your at as by from so if then".split(" "));
 
@@ -45,6 +46,37 @@ export function overlapIndexes(answer: string, shadow: string): Set<number> {
     if (tb.has(wa.slice(i, i + 3).join(" "))) [i, i + 1, i + 2].forEach((k) => hit.add(k));
   }
   return hit;
+}
+
+/** Every AI answer we have for a question: the main shadowAnswer plus any other models' answers. */
+export function shadowsOf(q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { model: string; text: string }[] {
+  const out = [{ model: "AI", text: q.shadowAnswer }, ...(q.shadowAnswers ?? [])].filter((s) => s.text?.trim());
+  return out.filter((s, i) => out.findIndex((x) => x.text.trim() === s.text.trim()) === i);
+}
+
+/** The AI answer this transcript is closest to (and how close). */
+export function closestShadow(transcript: string, q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { model: string; text: string; similarity: number; of: number } {
+  const all = shadowsOf(q);
+  let best = { ...all[0] ?? { model: "AI", text: "" }, similarity: 0 };
+  for (const s of all) {
+    const sim = similarity(transcript, s.text);
+    if (sim > best.similarity) best = { ...s, similarity: sim };
+  }
+  return { ...best, of: all.length };
+}
+
+/**
+ * Phrasing several AI models agree on for this question (3-word phrases found in 2+ of their answers,
+ * not just filler words), and how many of them the transcript uses. Catches paraphrased or other-model answers.
+ */
+export function consensusHits(transcript: string, q: Pick<Question, "shadowAnswer" | "shadowAnswers">): { hits: string[]; total: number } {
+  const all = shadowsOf(q);
+  if (all.length < 3) return { hits: [], total: 0 };
+  const count = new Map<string, number>();
+  for (const s of all) ngrams(words(s.text), 3).forEach((g) => count.set(g, (count.get(g) ?? 0) + 1));
+  const shared = [...count].filter(([g, n]) => n >= 2 && g.split(" ").filter((w) => !STOP.has(w)).length >= 2).map(([g]) => g);
+  const said = ngrams(words(transcript), 3);
+  return { hits: shared.filter((g) => said.has(g)), total: shared.length };
 }
 
 // Spoken disfluencies and hedges: people thinking out loud. Chrome often drops "um", so hedges count too.
