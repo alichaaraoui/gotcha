@@ -68,12 +68,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [savedHistory, setSavedHistory] = useState<PastInterview[]>([]);
   const [savedKnownAi, setSavedKnownAi] = useState<KnownAiAnswer[]>([]);
 
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
     setSession(load("unscripted.session", blankSession()));
     setSavedHistory(load("unscripted.history", []));
     setSavedKnownAi(load("unscripted.knownAi", []));
+    setHydrated(true);
   }, []);
-  useEffect(() => save("unscripted.session", session), [session]);
+  // Only save after loading, or the blank first render overwrites the saved session
+  useEffect(() => {
+    if (hydrated) save("unscripted.session", session);
+  }, [session, hydrated]);
 
   const history = useMemo(() => [...(seedHistory as PastInterview[]), ...savedHistory], [savedHistory]);
   const knownAi = useMemo(() => [...(seedKnownAi as KnownAiAnswer[]), ...savedKnownAi], [savedKnownAi]);
@@ -87,7 +93,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProfile: (p) => update((s) => ({ ...s, profile: p })),
     setTrack: (id) => update((s) => ({ ...s, trackId: id })),
     addQuestions: (qs) => update((s) => ({ ...s, questions: [...s.questions.filter((q) => !qs.some((n) => n.id === q.id)), ...qs] })),
-    markAsked: (qid) => update((s) => (s.trackPath.includes(qid) ? s : { ...s, trackPath: [...s.trackPath, qid] })),
+    // The interview clock starts at the first question asked (used for "minutes to first flag")
+    markAsked: (qid) => update((s) => (s.trackPath.includes(qid) ? s : { ...s, startedAt: s.trackPath.length ? s.startedAt : Date.now(), trackPath: [...s.trackPath, qid] })),
     recordAnswer: (e, g, sc) =>
       update((s) => ({
         ...s,
@@ -112,10 +119,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       save("unscripted.history", h);
       save("unscripted.knownAi", k);
     },
-    reset: () => setSession(blankSession()),
+    // New candidate: keep the recruiter's track and checklist choices
+    reset: () => setSession((s) => ({ ...blankSession(), trackId: s.trackId, checklist: s.checklist })),
   };
 
-  return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+  // Render nothing until localStorage is loaded so pages never flash "no candidate"
+  return <Ctx.Provider value={store}>{hydrated ? children : null}</Ctx.Provider>;
 }
 
 export function useStore() {

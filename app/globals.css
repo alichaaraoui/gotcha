@@ -2,10 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply bg-slate-950 text-slate-100 antialiased; }
-.card { @apply rounded-xl border border-slate-800 bg-slate-900/70 p-4; }
-.btn { @apply rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-40; }
-.btn-primary { @apply btn bg-indigo-500 text-white hover:bg-indigo-400; }
-.btn-ghost { @apply btn border border-slate-700 hover:bg-slate-800; }
-.label { @apply text-xs uppercase tracking-wide text-slate-400; }
-.input { @apply w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-indigo-400; }
+/* Black device frame + soft glass panels + pastel assistant sidebar */
+:root {
+  --frame: #0a0a0c;
+  --stage-from: #3d3846;
+  --stage-via: #5f5568;
+  --stage-to: #7d6d66;
+  --side-from: #d8d2f6;
+  --side-via: #e8c4e2;
+  --side-to: #f4ca8e;
+}
+
+body { @apply bg-[var(--frame)] text-white antialiased; font-family: var(--font-sans), system-ui, sans-serif; }
+
+/* Shared building blocks (used by every page) */
+.card { @apply rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-xl; }
+.btn { @apply rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-40; }
+.btn-primary { @apply btn bg-white text-black hover:bg-white/90; }
+.btn-ghost { @apply btn border border-white/20 text-white/90 hover:bg-white/10; }
+.label { @apply text-[11px] font-medium uppercase tracking-[0.12em] text-white/50; }
+.input { @apply w-full rounded-full border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/35 focus:border-white/50; }
+.chip { @apply inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1 text-xs text-white/80; }
+
+/* Stage (candidate area) and assistant sidebar */
+.stage { background: linear-gradient(135deg, var(--stage-from), var(--stage-via) 55%, var(--stage-to)); }
+.assistant { background: linear-gradient(170deg, var(--side-from), var(--side-via) 50%, var(--side-to)); }
+.glass-light { @apply rounded-3xl border border-white/50 bg-white/40 backdrop-blur-xl; }
+.chip-light { @apply inline-flex items-center gap-1.5 rounded-full border border-white/60 bg-white/45 px-3 py-1 text-xs text-slate-700; }
+.circle { @apply grid h-11 w-11 place-items-center rounded-full border border-white/60 bg-white/35 text-slate-700 transition hover:bg-white/70 disabled:opacity-40; }
+
+/* Exportable report: Print → Save as PDF */
+@media print {
+  body { background: white !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .card { border-color: #ddd !important; background: white !important; backdrop-filter: none !important; break-inside: avoid; }
+  .card *, .label { color: #111 !important; }
+}
