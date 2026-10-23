@@ -2,9 +2,13 @@
 // OWNER: Person 2 (weights, ranking, known-AI matching) · Person 3 (insights page uses these)
 import type { MethodId, PastInterview, Session, Weights, KnownAiAnswer, Track, Question } from "@/lib/types";
 import { DEFAULT_WEIGHTS } from "@/lib/scoring/fuse";
-import { similarity } from "@/lib/scoring/text";
+import { similarity, words } from "@/lib/scoring/text";
 
-/** Each method's weight = default × how often its flags were confirmed (Laplace-smoothed). */
+/**
+ * Each method's weight = default × how often its flags were confirmed by the recruiter.
+ * Precision uses a Beta(2,2) prior so a few verdicts nudge the weight instead of swinging it:
+ * 50% precision keeps the default, 100% → ×1.5, 0% → ×0.5.
+ */
 export function learnWeights(history: PastInterview[]): Weights {
   const hits: Record<string, { right: number; total: number }> = {};
   for (const p of history) {
@@ -18,13 +22,16 @@ export function learnWeights(history: PastInterview[]): Weights {
   (Object.keys(out) as MethodId[]).forEach((m) => {
     const h = hits[m];
     if (!h) return;
-    const precision = (h.right + 1) / (h.total + 2);
+    const precision = (h.right + 2) / (h.total + 4);
     out[m] = Math.round(DEFAULT_WEIGHTS[m] * (0.5 + precision) * 100) / 100;
   });
   return out;
 }
 
-/** Questions ranked by how well they separated assisted from organic candidates (gap in mean risk). */
+/**
+ * Questions ranked by how well they separated assisted from organic candidates (gap in mean risk).
+ * Sorted by the gap shrunk toward 0 for rarely-asked questions, so one lucky interview can't top the list.
+ */
 export function rankQuestions(history: PastInterview[], trackId: string) {
   const agg: Record<string, { sus: number[]; gen: number[] }> = {};
   for (const p of history.filter((h) => h.trackId === trackId)) {
@@ -35,8 +42,13 @@ export function rankQuestions(history: PastInterview[], trackId: string) {
   }
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
   return Object.entries(agg)
-    .map(([questionId, a]) => ({ questionId, separation: Math.round(mean(a.sus) - mean(a.gen)), asked: a.sus.length + a.gen.length }))
-    .sort((x, y) => y.separation - x.separation);
+    .map(([questionId, a]) => {
+      const asked = a.sus.length + a.gen.length;
+      // a gap needs both kinds of candidate to mean anything
+      const separation = a.sus.length && a.gen.length ? Math.round(mean(a.sus) - mean(a.gen)) : 0;
+      return { questionId, separation, asked, confidence: Math.round((separation * asked) / (asked + 3)) };
+    })
+    .sort((x, y) => y.confidence - x.confidence || y.asked - x.asked);
 }
 
 /** Put the best-separating questions first inside each stage, so problems surface sooner. */
@@ -70,7 +82,7 @@ export function preInterviewBrief(history: PastInterview[], track: Track) {
 }
 
 /** Turn a finished session into history + any confirmed AI answers into the known-answer library. */
-export function sessionToPast(s: Session): { past: PastInterview; newKnownAi: KnownAiAnswer[] } {
+export function sessionToPast(s: Session, library: KnownAiAnswer[] = []): { past: PastInterview; newKnownAi: KnownAiAnswer[] } {
   const verdicts = Object.values(s.verdicts);
   const outcome = verdicts.includes("suspicious") ? "suspicious" : "genuine";
   const firstFlag = s.flags.find((f) => f.level === "flag");
@@ -83,6 +95,8 @@ export function sessionToPast(s: Session): { past: PastInterview; newKnownAi: Kn
     .filter((f) => s.verdicts[f.id] === "suspicious")
     .map((f) => s.events.find((e) => e.questionId === f.questionId))
     .filter((e): e is NonNullable<typeof e> => !!e && e.transcript.length > 40)
+    .filter((e, i, all) => all.findIndex((x) => x.questionId === e.questionId) === i)
+    .filter((e) => !matchKnownAi(e.transcript, e.questionId, library))
     .map((e, i) => ({ id: `kai-${s.id}-${i}`, questionId: e.questionId, text: e.transcript, seenCount: 1 }));
   return {
     past: {
@@ -98,9 +112,24 @@ export function sessionToPast(s: Session): { past: PastInterview; newKnownAi: Kn
   };
 }
 
-/** Same answer showing up across different candidates = likely a proxy interviewer or shared script. */
+/** Known-AI library: this answer ≈ an AI answer already confirmed for the same question. */
+export function matchKnownAi(transcript: string, questionId: string, known: KnownAiAnswer[]): { id: string; similarity: number } | undefined {
+  let best: { id: string; similarity: number } | undefined;
+  for (const k of known) {
+    if (k.questionId !== questionId) continue;
+    const s = similarity(transcript, k.text);
+    if (!best || s > best.similarity) best = { id: k.id, similarity: Math.round(s * 100) / 100 };
+  }
+  return best && best.similarity >= 0.55 ? best : undefined;
+}
+
+/**
+ * Repeat answer: near-identical to a confirmed answer given to a DIFFERENT question (a canned script
+ * reused across questions or shared between candidates/proxies). Stricter threshold than matchKnownAi.
+ */
 export function findRepeatAnswer(transcript: string, questionId: string, known: KnownAiAnswer[]): KnownAiAnswer | undefined {
-  return known.find((k) => k.questionId === questionId && similarity(transcript, k.text) > 0.7);
+  if (words(transcript).length < 15) return undefined;
+  return known.find((k) => k.questionId !== questionId && similarity(transcript, k.text) > 0.7);
 }
 
 export function fillRepo(q: Question, repo?: string): Question {

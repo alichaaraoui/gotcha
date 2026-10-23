@@ -32,9 +32,11 @@ body { @apply bg-[var(--frame)] text-white antialiased; font-family: var(--font-
 .circle { @apply grid h-11 w-11 place-items-center rounded-full border border-white/60 bg-white/35 text-slate-700 transition hover:bg-white/70 disabled:opacity-40; }
 
 /* Exportable report: Print → Save as PDF */
+.print-only { display: none; }
 @media print {
   body { background: white !important; color: #111 !important; }
   .no-print { display: none !important; }
+  .print-only { display: block !important; }
   .card { border-color: #ddd !important; background: white !important; backdrop-filter: none !important; break-inside: avoid; }
   .card *, .label { color: #111 !important; }
   .stage { background: white !important; border: 1px solid #ddd; }

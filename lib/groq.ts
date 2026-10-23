@@ -1,20 +1,40 @@
-// Groq (Llama-3) via server routes only. Returns null on any failure so callers fall back locally.
+// Groq via server routes only (model from GROQ_MODEL, default gpt-oss-20b; callers can pick another). Returns null on any failure (no key, offline, timeout,
+// bad JSON) so every caller falls back locally. Never throws.
 // OWNER: Person 2
 const URL = "https://api.groq.com/openai/v1/chat/completions";
 
-export async function groqJson<T>(system: string, user: string, timeoutMs = 4000): Promise<T | null> {
+export interface GroqOpts {
+  timeoutMs?: number;
+  temperature?: number;
+  maxTokens?: number; // keep small: the free tier counts the reserved max against tokens-per-minute
+  model?: string; // override GROQ_MODEL, e.g. to spread a batch over models (free limits are per model)
+  retry429?: boolean; // batch jobs: if Groq says "try again in ≤5s", wait once and retry (never for live scoring)
+}
+
+/** Short display names for the models, shown next to their answers. */
+export const MODEL_LABEL: Record<string, string> = {
+  "openai/gpt-oss-120b": "GPT-OSS 120B",
+  "qwen/qwen3.8-27b": "Qwen 3.8",
+  "openai/gpt-oss-20b": "GPT-OSS 20B",
+};
+
+/** Chat models this key can use; batches rotate through them. */
+export const GROQ_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"] as const;
+
+export async function groqJson<T>(system: string, user: string, opts: GroqOpts | number = {}): Promise<T | null> {
+  const { timeoutMs = 4000, temperature = 0.2, maxTokens = 900, model: override, retry429 = false } = typeof opts === "number" ? ({ timeoutMs: opts } as GroqOpts) : opts;
+  const model = override || process.env.GROQ_MODEL || "openai/gpt-oss-20b"; // Groq retired Llama 3; gpt-oss-20b is fast on the free plan
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
   try {
-    const res = await fetch(URL, {
+    const call = () => fetch(URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        // Groq retired Llama 3; gpt-oss-20b is the fast model available on the free plan
-        model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
-        temperature: 0.2,
-        max_completion_tokens: 900,
-        ...((process.env.GROQ_MODEL || "openai/gpt-oss-20b").startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+        model,
+        temperature,
+        ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}), // reasoning tokens count against the limit
+        max_tokens: maxTokens,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },
@@ -22,10 +42,21 @@ export async function groqJson<T>(system: string, user: string, timeoutMs = 4000
         ],
       }),
       signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
     });
+    let res = await call();
+    const wait = Number(res.headers.get("retry-after"));
+    if (res.status === 429 && retry429 && wait > 0 && wait <= 5) {
+      await new Promise((r) => setTimeout(r, wait * 1000 + 200));
+      res = await call();
+    }
     if (!res.ok) return null;
     const data = await res.json();
-    return JSON.parse(data.choices[0].message.content) as T;
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== "string") return null;
+    // Reasoning models may prepend <think>…</think> or wrap the JSON in prose; keep just the object
+    const json = content.replace(/<think>[\s\S]*?<\/think>/g, "").match(/\{[\s\S]*\}/)?.[0];
+    return json ? (JSON.parse(json) as T) : null;
   } catch {
     return null;
   }

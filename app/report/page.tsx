@@ -9,12 +9,59 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { allQuestions, useStore } from "@/lib/store";
 import { LEVEL_STYLE, METHOD_LABEL } from "@/components/ui";
-import { overlapIndexes, similarity } from "@/lib/scoring/text";
+import { overlapIndexes, similarity, words } from "@/lib/scoring/text";
 import { latencyMs } from "@/lib/scoring/signals";
-import type { Level, MethodId, Question, ScoreRequest } from "@/lib/types";
+import { FIRING } from "@/lib/scoring/fuse";
+import { PENDING_CLIP, seekToTail } from "@/lib/clips";
+import type { AnswerEvent, GazeHotspot, GazeWindow, Level, MethodId, Question, ScoreRequest, Session } from "@/lib/types";
 
 const PASS: Level[] = ["clear", "watch"]; // answers that sounded like the candidate
 const LEVEL_WORDS: Record<Level, string> = { clear: "Sounded genuine", watch: "Slightly unusual", warn: "Didn't add up", flag: "Sounded scripted" };
+const PAUSE_MS = 700; // same "thinking pause" cut-off as the scorer
+const EASY = (q?: Question) => q?.kind === "easy" || q?.stage === "warmup";
+
+// ---------- derived numbers ----------
+function answerStats(e: AnswerEvent) {
+  const start = e.firstWordAt ?? e.askedAt;
+  const latency = (e.firstWordAt ?? e.endedAt) - e.askedAt;
+  const n = words(e.transcript).length;
+  const wpm = n / Math.max(0.05, (e.endedAt - start) / 60000);
+  const gaps: number[] = [];
+  for (let i = 1; i < e.words.length; i++) gaps.push(e.words[i].t - e.words[i - 1].t);
+  const pauses = gaps.filter((g) => g > PAUSE_MS);
+  const mean = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0;
+  const sd = gaps.length ? Math.sqrt(gaps.reduce((a, g) => a + (g - mean) ** 2, 0) / gaps.length) : 0;
+  return { latency, wpm, pauses: pauses.length, longest: Math.max(0, ...gaps), evenness: mean ? 1 - Math.min(1, sd / mean) : 0 };
+}
+
+const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
+const fmt = (x: number, d = 0) => (Number.isFinite(x) ? x.toFixed(d) : "–");
+
+function buildDataset(session: Session, questions: Question[]) {
+  // One labelled row per answer: features (signals, gaze, timing) + the recruiter's verdict.
+  const rows = session.scores.map((s) => {
+    const q = questions.find((x) => x.id === s.questionId);
+    const e = session.events.find((x) => x.questionId === s.questionId);
+    const flag = session.flags.find((f) => f.questionId === s.questionId);
+    const st = e ? answerStats(e) : null;
+    return {
+      questionId: s.questionId,
+      kind: q?.kind, stage: q?.stage, topic: q?.topic,
+      risk: s.risk, level: s.level, methodsFiring: s.methodsFiring,
+      signals: Object.fromEntries(s.signals.map((x) => [x.method, x.value])),
+      gaze: session.gaze.find((g) => g.questionId === s.questionId) ?? null,
+      latencyMs: st?.latency ?? null, wpm: st ? Math.round(st.wpm) : null, thinkingPauses: st?.pauses ?? null,
+      aiSimilarity: e && q ? Math.round(similarity(e.transcript, q.shadowAnswer) * 100) / 100 : null,
+      flagged: flag ? { type: flag.type, source: flag.source, level: flag.level } : null,
+      verdict: flag ? session.verdicts[flag.id] ?? null : null,
+      transcript: e?.transcript ?? "",
+    };
+  });
+  // Clips and snapshots only live in this browser; keep the export small and portable.
+  const flags = session.flags.map(({ clipUrl, snapshot, ...f }) => ({ ...f, hadClip: !!clipUrl, hadSnapshot: !!snapshot }));
+  return { schema: "gotcha.dataset/v1", exportedAt: new Date().toISOString(), sessionId: session.id, trackId: session.trackId, candidate: session.profile?.login ?? null, rows, session: { ...session, flags } };
+}
+
 
 export default function Report() {
   const { session, track, setVerdict, finishInterview } = useStore();
@@ -43,7 +90,7 @@ export default function Report() {
     const verdict =
       confirmed > 0 || flagged >= 2
         ? { words: "Likely AI-assisted", detail: "Several answers sounded scripted. Review the flagged moments below before deciding.", tone: "flag" as Level }
-        : passed / n >= 0.8 && flagged === 0
+        : passed / n >= 0.8 && flagged === 0 && authenticity >= 70 // "genuine" needs a high score, not just no flags
           ? { words: "Sounds genuine", detail: "Their answers sounded like their own thinking and matched their GitHub.", tone: "clear" as Level }
           : { words: "Mixed: worth a second look", detail: "Mostly their own words, with a few moments that didn't add up.", tone: "warn" as Level };
     const delays = session.events.map((e) => latencyMs({ event: e } as ScoreRequest) / 1000);
@@ -62,8 +109,9 @@ export default function Report() {
   // Live-probed flags first, then the most serious
   const flags = [...session.flags].sort((a, b) => (a.type === b.type ? (b.level === "flag" ? 1 : 0) - (a.level === "flag" ? 1 : 0) : a.type === "live" ? -1 : 1));
 
+  // Labelled dataset: one row per answer (features + the recruiter's verdict), plus the session
   const exportData = () => {
-    const blob = new Blob([JSON.stringify({ session, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(buildDataset(session, questions), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `gotcha-${session.id}.json`;
@@ -86,6 +134,9 @@ export default function Report() {
     <div className="mx-auto max-w-6xl space-y-8 pb-16">
       {/* ───────── 1 · The answer at a glance ───────── */}
       <section className="stage rounded-[32px] p-8">
+        {/* The nav (with the logo) is hidden in the PDF, so brand the printed report here */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/gotcha-logo-light.svg" alt="GotCha" className="print-only mb-6 h-9 w-auto" />
         <div className="flex flex-wrap items-start gap-4">
           <div>
             <div className="label">Interview report</div>
@@ -179,7 +230,7 @@ export default function Report() {
                     {reasons.map((r, i) => <li key={i}>• <span className="text-white/80">{METHOD_LABEL[r.method]}:</span> {r.why}</li>)}
                   </ul>
                 )}
-                {f.clipUrl && <video src={f.clipUrl} controls className="no-print mt-2 w-64 rounded-xl" />}
+                {f.clipUrl && <div className="no-print mt-2"><Clip url={f.clipUrl} /></div>}
               </div>
               <div className="flex flex-col gap-2 self-center">
                 {(["genuine", "suspicious"] as const).map((x) => (
@@ -235,6 +286,11 @@ export default function Report() {
                     <p className="text-sm leading-relaxed text-white/50">{q?.shadowAnswer}</p>
                   </div>
                 </div>
+                {ev && <PausePattern e={ev} />}
+                {(() => {
+                  const g = session.gaze.find((x) => x.questionId === s.questionId);
+                  return g ? <EyeRow g={g} /> : null;
+                })()}
                 <div>
                   <div className="label mb-2">Why it scored {s.risk}%</div>
                   <ul className="grid gap-1.5 text-xs text-white/60 md:grid-cols-2">
@@ -251,6 +307,12 @@ export default function Report() {
           );
         })}
       </section>
+
+      {/* ───────── Easy vs. hard, GitHub ───────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <EasyVsHard session={session} qOf={qOf} />
+        <GithubCheck session={session} />
+      </div>
 
       {/* ───────── 4 · Which checks fired ───────── */}
       <section className="card space-y-3">
@@ -288,3 +350,151 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
     </div>
   );
 }
+
+// ---------- P3: clips, timing, eyes, easy vs hard, GitHub ----------
+function Clip({ url }: { url?: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!url) return null;
+  if (url.startsWith(PENDING_CLIP)) return <div className="flex h-32 w-56 items-center justify-center rounded bg-white/10 text-xs text-white/50">Clip still saving…</div>;
+  if (broken) return <div className="flex h-32 w-56 items-center justify-center rounded bg-white/10 p-2 text-center text-xs text-white/40">Clip only plays in the tab that recorded it</div>;
+  return <video src={url} controls className="w-56 rounded" onLoadedMetadata={(e) => seekToTail(e.currentTarget)} onError={() => setBroken(true)} />;
+}
+
+function EasyVsHard({ session, qOf }: { session: Session; qOf: (id: string) => Question | undefined }) {
+  const group = (easy: boolean) => {
+    const evs = session.events.filter((e) => EASY(qOf(e.questionId)) === easy);
+    const st = evs.map(answerStats);
+    const gz = evs.map((e) => session.gaze.find((g) => g.questionId === e.questionId)).filter((g): g is GazeWindow => !!g);
+    return {
+      n: evs.length,
+      latency: avg(st.map((s) => s.latency)) / 1000,
+      wpm: avg(st.map((s) => s.wpm)),
+      pauses: avg(st.map((s) => s.pauses)),
+      sim: avg(evs.map((e) => similarity(e.transcript, qOf(e.questionId)?.shadowAnswer ?? "") * 100)),
+      off: avg(gz.map((g) => g.offScreenPct * 100)),
+      risk: avg(evs.map((e) => session.scores.find((s) => s.questionId === e.questionId)?.risk ?? 0)),
+    };
+  };
+  const easy = group(true), hard = group(false);
+  // Real people slow down and pause more on hard questions. The reverse is the signal.
+  const rows: { label: string; e: number; h: number; d?: number; unit: string; odd: boolean }[] = [
+    { label: "Delay before answering", e: easy.latency, h: hard.latency, d: 1, unit: "s", odd: hard.latency < easy.latency },
+    { label: "Speaking speed", e: easy.wpm, h: hard.wpm, unit: " wpm", odd: hard.wpm > easy.wpm + 10 },
+    { label: "Thinking pauses / answer", e: easy.pauses, h: hard.pauses, d: 1, unit: "", odd: hard.pauses < easy.pauses },
+    { label: "Overlap with AI answer", e: easy.sim, h: hard.sim, unit: "%", odd: hard.sim > easy.sim + 10 },
+    { label: "Looking away", e: easy.off, h: hard.off, unit: "%", odd: hard.off > easy.off + 10 },
+    { label: "Average risk", e: easy.risk, h: hard.risk, unit: "%", odd: hard.risk > easy.risk + 15 },
+  ];
+  const odd = rows.filter((r) => r.odd && Number.isFinite(r.e) && Number.isFinite(r.h)).length;
+  return (
+    <section className="card space-y-2">
+      <div className="label">Easy vs. hard questions</div>
+      <p className="text-xs text-white/50">People normally slow down and pause more on hard questions. Hard answers that come out faster and smoother than easy ones are worth a second look.</p>
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-xs text-white/40"><th className="font-normal" /><th className="font-normal">Easy ({easy.n})</th><th className="font-normal">Hard ({hard.n})</th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-t border-white/10">
+              <td className="py-1 text-white/80">{r.label}</td>
+              <td className="tabular-nums">{fmt(r.e, r.d)}{Number.isFinite(r.e) ? r.unit : ""}</td>
+              <td className={`tabular-nums ${r.odd ? "font-semibold text-warn" : ""}`}>{fmt(r.h, r.d)}{Number.isFinite(r.h) ? r.unit : ""}{r.odd ? " ⚠" : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className={`text-xs ${odd >= 2 ? "text-warn" : "text-white/40"}`}>{easy.n && hard.n ? (odd >= 2 ? `${odd} of ${rows.length} measures run the "wrong" way for hard questions.` : "Hard questions look harder for them, as expected.") : "Need at least one easy and one hard answer to compare."}</p>
+    </section>
+  );
+}
+
+function GithubCheck({ session }: { session: Session }) {
+  const p = session.profile;
+  const mismatches = session.scores.flatMap((s) => s.signals.filter((x) => x.method === "github_mismatch" && x.value > 0).map((x) => x.why));
+  return (
+    <section className="card space-y-2">
+      <div className="label">GitHub check</div>
+      {!p ? (
+        <p className="text-sm text-white/40">No GitHub profile loaded for this interview.</p>
+      ) : (
+        <>
+          <div className="flex items-center gap-3 text-sm">
+            {p.avatarUrl && <img src={p.avatarUrl} alt="" className="h-8 w-8 rounded-full" />}
+            <a className="font-medium hover:underline" href={`https://github.com/${p.login}`} target="_blank" rel="noreferrer">{p.login}</a>
+            <span className="text-xs text-white/40">{p.source === "live" ? "live data" : p.source === "cache" ? "cached data" : "offline sample"}</span>
+          </div>
+          <p className="text-xs text-white/50">
+            {fmt(p.accountAgeYrs, 1)} yrs on GitHub · {p.publicRepos} public repos · {p.commitsLast90d} commits in 90 days · {p.topLanguages.slice(0, 4).map((l) => `${l.lang} ${Math.round(l.pct)}%`).join(", ")}
+          </p>
+        </>
+      )}
+      {session.claims.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {session.claims.map((c, i) => (
+            <li key={i} className="flex gap-2">
+              <span className={c.supportedByGithub === true ? "text-clear" : c.supportedByGithub === false ? "text-warn" : "text-white/40"}>{c.supportedByGithub === true ? "✓" : c.supportedByGithub === false ? "✗" : "?"}</span>
+              <span>{c.text} <span className="text-xs text-white/40">· ask: {c.suggestedQuestion}</span></span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {mismatches.length > 0 ? (
+        <ul className="space-y-0.5 text-xs text-warn">{[...new Set(mismatches)].map((m) => <li key={m}>{m}</li>)}</ul>
+      ) : (
+        p && <p className="text-xs text-clear">Nothing they said contradicts their GitHub.</p>
+      )}
+    </section>
+  );
+}
+
+function PausePattern({ e }: { e: AnswerEvent }) {
+  const span = Math.max(1, e.endedAt - e.askedAt);
+  const pct = (t: number) => ((t - e.askedAt) / span) * 100;
+  const st = answerStats(e);
+  return (
+    <div className="space-y-1">
+      <div className="label">Pause pattern</div>
+      <div className="relative h-5 overflow-hidden rounded bg-white/10">
+        {e.firstWordAt && <div className="absolute inset-y-0 left-0 bg-white/20" style={{ width: `${pct(e.firstWordAt)}%` }} title="Before first word" />}
+        {e.words.map((w, i) => {
+          const gap = i ? w.t - e.words[i - 1].t : 0;
+          return (
+            <span key={i}>
+              {gap > PAUSE_MS && <span className="absolute inset-y-0 bg-watch/50" style={{ left: `${pct(e.words[i - 1].t)}%`, width: `${pct(w.t) - pct(e.words[i - 1].t)}%` }} title={`${(gap / 1000).toFixed(1)}s pause`} />}
+              <span className="absolute inset-y-1 w-px bg-white/70" style={{ left: `${pct(w.t)}%` }} />
+            </span>
+          );
+        })}
+      </div>
+      <p className="text-xs text-white/50">
+        {fmt(st.latency / 1000, 1)}s before first word · {fmt(st.wpm)} wpm · {st.pauses} thinking pause{st.pauses === 1 ? "" : "s"} (longest {fmt(st.longest / 1000, 1)}s) · rhythm {st.evenness > 0.7 ? "very even, like reading aloud" : st.evenness > 0.45 ? "fairly even" : "uneven, like thinking aloud"}
+      </p>
+    </div>
+  );
+}
+
+function spotWhere(h: GazeHotspot) {
+  const v = h.dy > 0.3 ? "below" : h.dy < -0.3 ? "above" : "";
+  const sd = Math.abs(h.dx) > 0.3 ? `their ${h.dx > 0 ? "right" : "left"}` : "";
+  return [v, sd].filter(Boolean).join(", ") || "off-camera";
+}
+
+function EyeRow({ g }: { g: GazeWindow }) {
+  const items = [
+    { label: "Looking away", v: `${Math.round(g.offScreenPct * 100)}%`, hot: g.offScreenPct > 0.35 },
+    { label: "Reading sweeps", v: `${fmt(g.readingSweeps, 1)}/min`, hot: g.readingSweeps >= 7 },
+    { label: "Side glances", v: Math.abs(g.sideBias) < 0.3 ? "no pattern" : `mostly their ${g.sideBias > 0 ? "right" : "left"}`, hot: Math.abs(g.sideBias) > 0.5 },
+    ...(g.offCameraPct != null ? [{ label: "Elsewhere on screen", v: `${Math.round(g.offCameraPct * 100)}%`, hot: g.offCameraPct > 0.3 }] : []),
+    ...(g.hotspot && g.hotspot.visits >= 3 ? [{ label: "Same spot", v: `${g.hotspot.visits}× ${spotWhere(g.hotspot)}, ${Math.round(g.hotspot.dwellPct * 100)}% of answer`, hot: true }] : []),
+    { label: "Blinks", v: `${fmt(g.blinkRate)}/min`, hot: false },
+    { label: "vs. warm-up", v: `${Math.round(g.baselineDelta * 100)}% different`, hot: g.baselineDelta >= FIRING },
+  ];
+  return (
+    <div>
+      <div className="label mb-1">Eyes</div>
+      <div className="flex flex-wrap gap-2 text-xs">
+        {items.map((i) => <span key={i.label} className={`rounded border px-2 py-0.5 ${i.hot ? "border-warn/60 text-warn" : "border-white/15 text-white/50"}`}>{i.label}: {i.v}</span>)}
+      </div>
+    </div>
+  );
+}
+

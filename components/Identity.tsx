@@ -274,7 +274,7 @@ export function IdentityCard({ id, onPick }: { id: IdentityState; onPick: (login
           <div className="label">Identity check</div>
           <div className="text-lg font-normal">{r.headline}</div>
         </div>
-        <span className="chip shrink-0">{r.score}/100</span>
+        <span className="chip shrink-0" title="Higher = more things that don't line up">Risk {r.score}/100</span>
       </div>
 
       {r.story && <StoryView story={r.story} />}

@@ -5,11 +5,12 @@
 // OWNER: Person 1
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { CandidateProfile, Question, QuestionsResponse } from "@/lib/types";
+import Link from "next/link";
+import type { CandidateProfile, Gotcha, Question, QuestionsResponse } from "@/lib/types";
 
-type Tab = "github" | "answer" | "own";
+type Tab = "github" | "answer" | "gotchas" | "own";
 
-export function DigDeeper({ profile, trackId, last, disabled, onAsk, onAskOwn, onClaim }: {
+export function DigDeeper({ profile, trackId, last, disabled, gotchas, onAsk, onAskOwn, onAskGotcha, onClaim }: {
   profile: CandidateProfile;
   trackId: string;
   last?: { question: Question; answer: string };
@@ -17,6 +18,8 @@ export function DigDeeper({ profile, trackId, last, disabled, onAsk, onAskOwn, o
   onAsk: (q: Question) => void;
   onAskOwn: (text: string) => void;
   onClaim: (text: string) => void;
+  gotchas: Gotcha[];
+  onAskGotcha: (g: Gotcha) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("github");
@@ -31,7 +34,7 @@ export function DigDeeper({ profile, trackId, last, disabled, onAsk, onAskOwn, o
   const list = ideas[key];
 
   const load = async (force = false) => {
-    if (tab === "own" || (tab === "answer" && !last) || (!force && ideas[key])) return;
+    if (tab === "own" || tab === "gotchas" || (tab === "answer" && !last) || (!force && ideas[key])) return;
     setLoading(true);
     try {
       const r: QuestionsResponse = await fetch("/api/questions", {
@@ -68,7 +71,7 @@ export function DigDeeper({ profile, trackId, last, disabled, onAsk, onAskOwn, o
       {open && (
         <div className="space-y-3 border-t border-white/50 px-4 pb-4 pt-3">
           <div className="flex gap-1 rounded-full bg-white/40 p-1 text-xs">
-            {([["github", "Their GitHub"], ["answer", "Last answer"], ["own", "Your own"]] as [Tab, string][]).map(([t, label]) => (
+            {([["github", "GitHub"], ["answer", "Last answer"], ["gotchas", "Gotchas"], ["own", "Your own"]] as [Tab, string][]).map(([t, label]) => (
               <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-full py-1.5 transition ${tab === t ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-white/60"}`}>{label}</button>
             ))}
           </div>
@@ -91,7 +94,25 @@ export function DigDeeper({ profile, trackId, last, disabled, onAsk, onAskOwn, o
           {tab === "answer" && !last && <p className="px-1 text-sm text-slate-600">Ask a question first. Follow-ups on their answer show up here.</p>}
           {tab === "answer" && last && <p className="line-clamp-2 px-1 text-xs italic text-slate-500">On: &ldquo;{last.answer || last.question.text}&rdquo;</p>}
 
-          {tab !== "own" && (tab === "github" || last) && (
+          {tab === "gotchas" && (
+            <div className="space-y-2">
+              <p className="px-1 text-xs text-slate-500">Your off-script questions for when something feels rehearsed.</p>
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                {gotchas.map((g) => (
+                  <div key={g.id} className="rounded-2xl bg-white/70 p-3">
+                    <p className="text-sm leading-snug text-slate-900">{g.text}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[11px] text-slate-500">{g.style.replace("-", " ")} · {g.topic}</span>
+                      <button disabled={disabled} onClick={() => onAskGotcha(g)} className="ml-auto shrink-0 rounded-full bg-slate-900 px-3 py-1 text-xs text-white disabled:opacity-40">Ask this →</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/library" className="block text-center text-xs text-slate-500 hover:text-slate-800">Manage or import from your Google Doc →</Link>
+            </div>
+          )}
+
+          {(tab === "github" || (tab === "answer" && last)) && (
             <div className="space-y-2">
               {loading && !list && [0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/40" />)}
               {list?.map((q) => (

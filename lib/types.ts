@@ -50,6 +50,22 @@ export interface Question {
   repoRef?: string; // personalized from GitHub
   followUps?: string[]; // ids for "Go deeper"
   why?: string; // for suggested ideas: what this question reveals, in a few words
+  aiAnswers?: AiAnswer[]; // the same question answered by several AI models (research library)
+}
+
+export interface AiAnswer {
+  model: string; // e.g. "GPT-OSS 120B"
+  text: string;
+}
+
+// Sarah's private bank of off-script questions (her Google Doc, digitized)
+export interface Gotcha {
+  id: string;
+  text: string;
+  topic: string;
+  style: "curveball" | "constraint-change" | "knowledge-boundary" | "own-code" | "other";
+  realAnswer: string; // what a genuine answer sounds like
+  createdAt: number;
 }
 
 export interface Stage {
@@ -87,6 +103,16 @@ export interface GazeWindow {
   sideBias: number; // -1 left .. 1 right, sustained same-side glance
   blinkRate: number; // blinks per minute
   baselineDelta: number; // 0..1, how far this is from the warm-up baseline
+  // Added by P3 (optional, additive): looking at the screen but NOT at the camera / the interviewer
+  offCameraPct?: number; // 0..1 of answer time resting on another spot of the screen
+  hotspot?: GazeHotspot | null; // the off-camera spot they kept going back to, if any
+}
+
+export interface GazeHotspot {
+  dx: number; // -1..1 roughly, candidate's right = +; ±1 ≈ edge of the screen
+  dy: number; // + = below where they normally look
+  visits: number; // separate times they went back to it during the answer
+  dwellPct: number; // 0..1 of the answer spent there
 }
 
 // The 11 detection methods
