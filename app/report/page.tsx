@@ -90,7 +90,7 @@ export default function Report() {
     const verdict =
       confirmed > 0 || flagged >= 2
         ? { words: "Likely AI-assisted", detail: "Several answers sounded scripted. Review the flagged moments below before deciding.", tone: "flag" as Level }
-        : passed / n >= 0.8 && flagged === 0
+        : passed / n >= 0.8 && flagged === 0 && authenticity >= 70 // "genuine" needs a high score, not just no flags
           ? { words: "Sounds genuine", detail: "Their answers sounded like their own thinking and matched their GitHub.", tone: "clear" as Level }
           : { words: "Mixed: worth a second look", detail: "Mostly their own words, with a few moments that didn't add up.", tone: "warn" as Level };
     const delays = session.events.map((e) => latencyMs({ event: e } as ScoreRequest) / 1000);
