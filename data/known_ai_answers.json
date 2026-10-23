@@ -1,0 +1,6 @@
+[
+  { "id": "kai-1", "questionId": "be-c1", "text": "To design caching for a high-traffic API, I would implement a multi-layer caching strategy. First, I'd use a CDN for static content. Second, Redis with a cache-aside pattern. Additionally, I'd configure appropriate TTLs and event-driven invalidation, and monitor hit ratios.", "seenCount": 4 },
+  { "id": "kai-2", "questionId": "be-c3", "text": "SQL is ideal when data is highly relational and requires ACID transactions. NoSQL is better for flexible schemas and horizontal scaling. Ultimately, the choice depends on data structure, consistency requirements, and scalability needs.", "seenCount": 6 },
+  { "id": "kai-3", "questionId": "be-c2", "text": "One challenging bug was a race condition in a multi-threaded application. I reproduced it with logging, traced threads in a debugger, and fixed it with proper locking, which taught me the importance of thread safety.", "seenCount": 3 },
+  { "id": "kai-4", "questionId": "fe-c1", "text": "I would start with Lighthouse and Chrome DevTools, analyze bundle size and render-blocking resources, check for unnecessary re-renders, optimize images and implement code splitting.", "seenCount": 2 }
+]

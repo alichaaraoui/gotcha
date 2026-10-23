@@ -1,0 +1,7 @@
+{
+  "_note": "Cached snapshot (hardcoded per brief rule 1). Refresh by hand if you have an Adzuna key; never called live during the demo.",
+  "roles": {
+    "Backend Engineer": { "role": "Backend Engineer", "medianSalaryUsd": 132000, "openings": 18450, "hotSkills": ["Python", "Go", "Kafka", "PostgreSQL", "Redis", "AWS"], "difficulty": "mid" },
+    "Frontend Engineer": { "role": "Frontend Engineer", "medianSalaryUsd": 118000, "openings": 12120, "hotSkills": ["TypeScript", "React", "Next.js", "Accessibility", "Performance"], "difficulty": "mid" }
+  }
+}

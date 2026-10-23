@@ -1,0 +1,294 @@
+[
+  {
+    "id": "backend-mid",
+    "name": "Backend · Mid-level",
+    "role": "Backend Engineer",
+    "stages": [
+      {
+        "id": "warmup",
+        "label": "Warm-up (baseline)",
+        "questions": [
+          {
+            "id": "be-w1",
+            "text": "Tell me about the project you're most proud of from the last year.",
+            "kind": "easy",
+            "stage": "warmup",
+            "topic": "background",
+            "shadowAnswer": "One project I'm particularly proud of is a scalable microservices platform I built. Firstly, I designed the architecture using Docker and Kubernetes. Additionally, I implemented CI/CD pipelines that reduced deployment time by 40%. Overall, it taught me the importance of collaboration and clean code.",
+            "goodAnswerHint": "Specific names, messy details, a problem they hit. Some 'um's are normal here."
+          },
+          {
+            "id": "be-w2",
+            "text": "What's your go-to language and why?",
+            "kind": "easy",
+            "stage": "warmup",
+            "topic": "languages",
+            "shadowAnswer": "My go-to language is Python because of its readability, extensive ecosystem, and versatility. It excels in backend development, data processing, and automation. Furthermore, frameworks like Django and FastAPI enable rapid development while maintaining scalability.",
+            "goodAnswerHint": "Should match their GitHub's top language. Personal reasons beat feature lists."
+          },
+          {
+            "id": "be-w3",
+            "text": "Walk me through what you did yesterday at work or school.",
+            "kind": "easy",
+            "stage": "warmup",
+            "topic": "background",
+            "shadowAnswer": "Yesterday I started by reviewing pull requests, then attended our daily stand-up. Afterwards, I focused on implementing a new API endpoint and writing unit tests. Finally, I collaborated with the frontend team to resolve an integration issue.",
+            "goodAnswerHint": "Nobody needs AI for this. Use it to learn their normal speed and eye movement."
+          }
+        ]
+      },
+      {
+        "id": "core",
+        "label": "Core (from their GitHub)",
+        "questions": [
+          {
+            "id": "be-c1",
+            "text": "How would you design caching for an API that gets 10,000 requests a second?",
+            "kind": "hard",
+            "stage": "core",
+            "topic": "caching",
+            "shadowAnswer": "To design caching for a high-traffic API, I would implement a multi-layer strategy. First, a CDN for static content. Second, an in-memory cache like Redis with a cache-aside pattern. Additionally, I'd configure appropriate TTLs and implement cache invalidation using event-driven updates. Finally, I'd monitor hit ratios to optimize performance.",
+            "goodAnswerHint": "Real engineers hesitate, ask what the data looks like, mention a time a cache bit them.",
+            "followUps": ["be-d1", "be-d2"]
+          },
+          {
+            "id": "be-c2",
+            "text": "Tell me about a bug that took you more than a day to find.",
+            "kind": "hard",
+            "stage": "core",
+            "topic": "debugging",
+            "shadowAnswer": "One challenging bug involved a race condition in a multi-threaded application. Firstly, I reproduced the issue by adding logging. Subsequently, I used a debugger to trace thread execution. Ultimately, I resolved it by implementing proper locking mechanisms, which taught me the importance of thread safety.",
+            "goodAnswerHint": "A true story has odd specifics: a file name, a wrong assumption, who helped.",
+            "followUps": ["be-d3"]
+          },
+          {
+            "id": "be-c3",
+            "text": "When would you pick SQL over NoSQL? Use something you've actually built.",
+            "kind": "hard",
+            "stage": "core",
+            "topic": "databases",
+            "shadowAnswer": "I would choose SQL when data is highly relational and requires ACID transactions, such as financial systems. NoSQL is preferable for flexible schemas, horizontal scaling, and high write throughput. In summary, the decision depends on data structure, consistency requirements, and scalability needs.",
+            "goodAnswerHint": "Watch for a generic pros/cons list with no project named. That's the AI pattern.",
+            "followUps": ["be-d2"]
+          }
+        ]
+      },
+      {
+        "id": "deep",
+        "label": "Deep dive",
+        "questions": [
+          {
+            "id": "be-d1",
+            "text": "Your cache just served stale prices to 5% of users. What do you check first?",
+            "kind": "hard",
+            "stage": "deep",
+            "topic": "caching",
+            "shadowAnswer": "First, I would verify the cache invalidation logic to ensure updates propagate correctly. Next, I'd check TTL configurations and look for race conditions between writes and cache refreshes. Additionally, I'd examine monitoring dashboards for anomalies. Finally, I'd implement a fix such as write-through caching.",
+            "goodAnswerHint": "Good answers think out loud and narrow it down. Watch for a perfect 4-step list."
+          },
+          {
+            "id": "be-d2",
+            "text": "How did you handle database migrations on a live system?",
+            "kind": "hard",
+            "stage": "deep",
+            "topic": "databases",
+            "shadowAnswer": "For live migrations, I follow an expand-and-contract pattern. First, I add new columns without removing old ones. Then I deploy code that writes to both. Subsequently, I backfill data and finally remove the deprecated columns, ensuring zero downtime throughout the process.",
+            "goodAnswerHint": "Have they actually done it? Ask what went wrong. Real ones always have a story."
+          },
+          {
+            "id": "be-d3",
+            "text": "What would you log differently next time, after that bug?",
+            "kind": "hard",
+            "stage": "deep",
+            "topic": "debugging",
+            "shadowAnswer": "Going forward, I would implement structured logging with correlation IDs to trace requests across services. Additionally, I'd add contextual metadata such as thread IDs and timestamps. Furthermore, centralized log aggregation would enable faster root cause analysis.",
+            "goodAnswerHint": "Should connect back to THEIR bug. A generic logging lecture is a warning sign."
+          }
+        ]
+      },
+      {
+        "id": "probe",
+        "label": "Probe (test further)",
+        "questions": [
+          {
+            "id": "be-p1",
+            "text": "In your repo {repo}, why did you structure it the way you did? What would you change today?",
+            "kind": "probe",
+            "stage": "probe",
+            "probeStyle": "own-code",
+            "topic": "own-code",
+            "shadowAnswer": "I structured the repository following a modular architecture to separate concerns. The main components are organized into distinct directories for models, services, and utilities. Looking back, I would add more comprehensive testing and improve documentation.",
+            "goodAnswerHint": "They wrote it, so they should name real files and regrets instantly. Vague = red flag."
+          },
+          {
+            "id": "be-p2",
+            "text": "Same caching design, but now writes are 50% of traffic. Change your answer.",
+            "kind": "probe",
+            "stage": "probe",
+            "probeStyle": "constraint-change",
+            "topic": "caching",
+            "shadowAnswer": "With a write-heavy workload, I would reconsider the caching strategy. A write-behind cache could batch writes efficiently. Additionally, I'd reduce TTLs and consider whether caching remains beneficial given frequent invalidations.",
+            "goodAnswerHint": "Humans react right away ('oh, that changes things'). AI relays lag ~2s, then sound polished."
+          },
+          {
+            "id": "be-p3",
+            "text": "Quick one: what's 'git status' for? Now: how does git store a commit internally?",
+            "kind": "probe",
+            "stage": "probe",
+            "probeStyle": "polygraph-pair",
+            "topic": "git",
+            "shadowAnswer": "Git status shows the state of the working directory and staging area. Internally, Git stores a commit as an object containing a tree hash, parent commit hashes, author information, and the commit message, all addressed by a SHA-1 hash.",
+            "goodAnswerHint": "First half should be instant. If the hard half comes faster and smoother than the easy half, flag it."
+          },
+          {
+            "id": "be-p4",
+            "text": "Have you used the --strict-pool flag in Redis 7's cluster mode? How did it behave?",
+            "kind": "trap",
+            "stage": "probe",
+            "probeStyle": "knowledge-boundary",
+            "topic": "caching",
+            "shadowAnswer": "Yes, the --strict-pool flag in Redis 7 cluster mode enforces stricter connection pooling across nodes. It improves consistency by limiting cross-slot operations, though it can increase latency under heavy load.",
+            "goodAnswerHint": "This flag does not exist. 'Not sure, never heard of it' is the honest answer."
+          }
+        ]
+      },
+      {
+        "id": "wrap",
+        "label": "Wrap-up",
+        "questions": [
+          {
+            "id": "be-x1",
+            "text": "What do you want to get better at in the next year?",
+            "kind": "easy",
+            "stage": "wrap",
+            "topic": "background",
+            "shadowAnswer": "In the next year, I aim to deepen my expertise in distributed systems and cloud architecture. Additionally, I want to strengthen my leadership skills by mentoring junior developers.",
+            "goodAnswerHint": "Low stakes. Compare their speed and eyes to the warm-up."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "frontend-mid",
+    "name": "Frontend · Mid-level",
+    "role": "Frontend Engineer",
+    "stages": [
+      {
+        "id": "warmup",
+        "label": "Warm-up (baseline)",
+        "questions": [
+          {
+            "id": "fe-w1",
+            "text": "What's a website or app whose interface you love, and why?",
+            "kind": "easy",
+            "stage": "warmup",
+            "topic": "background",
+            "shadowAnswer": "I really admire Linear's interface because of its speed, keyboard-first navigation, and minimalist design. Additionally, its attention to micro-interactions creates a polished user experience.",
+            "goodAnswerHint": "Personal taste, specific details. Sets their baseline."
+          },
+          {
+            "id": "fe-w2",
+            "text": "React, Vue or something else, and why?",
+            "kind": "easy",
+            "stage": "warmup",
+            "topic": "frameworks",
+            "shadowAnswer": "I prefer React due to its component-based architecture, large ecosystem, and strong community support. Furthermore, hooks enable clean state management and code reuse.",
+            "goodAnswerHint": "Should match what's in their repos."
+          }
+        ]
+      },
+      {
+        "id": "core",
+        "label": "Core (from their GitHub)",
+        "questions": [
+          {
+            "id": "fe-c1",
+            "text": "A page feels slow on phones. How do you find out why?",
+            "kind": "hard",
+            "stage": "core",
+            "topic": "performance",
+            "shadowAnswer": "First, I would use Lighthouse and Chrome DevTools to profile performance. Next, I'd analyze bundle size, identify render-blocking resources, and check for unnecessary re-renders. Additionally, I'd optimize images and implement code splitting.",
+            "goodAnswerHint": "Real answers mention a specific tool moment: 'I opened the Performance tab and saw…'",
+            "followUps": ["fe-d1"]
+          },
+          {
+            "id": "fe-c2",
+            "text": "How do you manage state that many components need?",
+            "kind": "hard",
+            "stage": "core",
+            "topic": "state",
+            "shadowAnswer": "For shared state, I evaluate the complexity first. For simple cases, React Context suffices. For complex applications, I use Redux Toolkit or Zustand. Additionally, server state is best handled with React Query.",
+            "goodAnswerHint": "Look for a story about state going wrong, not a menu of libraries.",
+            "followUps": ["fe-d2"]
+          }
+        ]
+      },
+      {
+        "id": "deep",
+        "label": "Deep dive",
+        "questions": [
+          {
+            "id": "fe-d1",
+            "text": "The slow part turns out to be a huge list. What do you do?",
+            "kind": "hard",
+            "stage": "deep",
+            "topic": "performance",
+            "shadowAnswer": "I would implement list virtualization using a library like react-window to render only visible items. Additionally, I'd memoize list items and ensure stable keys to prevent unnecessary re-renders.",
+            "goodAnswerHint": "Fine if they name virtualization. Ask what broke when they tried it."
+          },
+          {
+            "id": "fe-d2",
+            "text": "Tell me about a time state got out of sync and users saw wrong data.",
+            "kind": "hard",
+            "stage": "deep",
+            "topic": "state",
+            "shadowAnswer": "In one project, cached server data became stale after a mutation. I resolved it by invalidating the relevant queries after successful updates and implementing optimistic updates with rollback on failure.",
+            "goodAnswerHint": "Needs a real incident with details."
+          }
+        ]
+      },
+      {
+        "id": "probe",
+        "label": "Probe (test further)",
+        "questions": [
+          {
+            "id": "fe-p1",
+            "text": "In your repo {repo}, walk me through one component you'd rewrite today.",
+            "kind": "probe",
+            "stage": "probe",
+            "probeStyle": "own-code",
+            "topic": "own-code",
+            "shadowAnswer": "I would rewrite the main component to improve separation of concerns, extract custom hooks for reusable logic, and add proper TypeScript types and tests.",
+            "goodAnswerHint": "They should name the actual component."
+          },
+          {
+            "id": "fe-p2",
+            "text": "Have you used React 19's useStableLayout hook? What did you think?",
+            "kind": "trap",
+            "stage": "probe",
+            "probeStyle": "knowledge-boundary",
+            "topic": "frameworks",
+            "shadowAnswer": "Yes, useStableLayout in React 19 helps prevent layout shifts by synchronizing layout measurements before paint. It's useful for complex animations, though it should be used sparingly.",
+            "goodAnswerHint": "This hook does not exist. Honest people say so."
+          }
+        ]
+      },
+      {
+        "id": "wrap",
+        "label": "Wrap-up",
+        "questions": [
+          {
+            "id": "fe-x1",
+            "text": "What are you learning on your own right now?",
+            "kind": "easy",
+            "stage": "wrap",
+            "topic": "background",
+            "shadowAnswer": "Currently, I'm exploring server components and edge rendering to build faster applications. Additionally, I'm improving my accessibility knowledge.",
+            "goodAnswerHint": "Compare to warm-up baseline."
+          }
+        ]
+      }
+    ]
+  }
+]

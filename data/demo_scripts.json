@@ -1,0 +1,23 @@
+{
+  "_note": "Replay mode: plays these when the mic or Wi-Fi fails. delayMs = gap before first word; wpm = speaking speed.",
+  "organic": {
+    "label": "Candidate A · Organic",
+    "answers": {
+      "be-w1": { "delayMs": 900, "wpm": 135, "text": "um so probably the rate limiter thing, ratelimit-proxy, we kept getting hammered by one client at my internship and I was like okay let's just put redis in front of it, and honestly the first version was wrong because I reset the bucket on every deploy" },
+      "be-w2": { "delayMs": 700, "wpm": 140, "text": "python mostly, I mean it's what I learned first and I'm fast in it, go for the little services though" },
+      "be-c1": { "delayMs": 2600, "wpm": 118, "text": "hmm ten thousand a second, okay, I guess first question is how often does the data change, because if it's like prices you can't just cache forever, um, I'd probably start with redis cache aside, but actually in my rate limiter we had this problem where everybody missed the cache at the same time, the thundering herd thing, so I'd add some jitter to the TTL" },
+      "be-p1": { "delayMs": 800, "wpm": 142, "text": "oh yeah so the bucket logic is all in one file, limiter.py, which is bad, and the redis calls aren't atomic so I'd rewrite it as a lua script, I knew that at the time but I was lazy" },
+      "be-p4": { "delayMs": 1500, "wpm": 125, "text": "strict pool? I don't think I've heard of that, I've only used redis cluster a little, I'd have to look it up" }
+    }
+  },
+  "assisted": {
+    "label": "Candidate B · AI-assisted",
+    "answers": {
+      "be-w1": { "delayMs": 1900, "wpm": 150, "text": "One project I'm particularly proud of is a scalable rate limiting platform I built. Firstly, I designed the architecture using Redis and Docker. Additionally, I implemented CI/CD pipelines that reduced deployment time. Overall, it taught me the importance of clean code." },
+      "be-w2": { "delayMs": 2000, "wpm": 152, "text": "My go-to language is Python because of its readability and extensive ecosystem. Furthermore, frameworks like FastAPI enable rapid development while maintaining scalability." },
+      "be-c1": { "delayMs": 2100, "wpm": 151, "text": "To design caching for a high-traffic API, I would implement a multi-layer caching strategy. First, a CDN for static content. Second, Redis with a cache-aside pattern. Additionally, I'd configure appropriate TTLs and implement event-driven cache invalidation. Finally, I'd monitor hit ratios to optimize performance." },
+      "be-p1": { "delayMs": 2200, "wpm": 149, "text": "I structured the repository following a modular architecture to separate concerns, with distinct directories for models, services, and utilities. Looking back, I would add more comprehensive testing and improve documentation." },
+      "be-p4": { "delayMs": 2000, "wpm": 150, "text": "Yes, the strict pool flag in Redis 7 cluster mode enforces stricter connection pooling across nodes. It improves consistency by limiting cross-slot operations, though it can increase latency under heavy load." }
+    }
+  }
+}
