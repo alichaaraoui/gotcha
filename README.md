@@ -2,6 +2,16 @@
 
 A recruiter side panel that spots AI-assisted answers in live technical interviews and suggests what to ask next. The tool suggests; the recruiter decides. No auto-rejection.
 
+**Live demo: https://gotcha-steel.vercel.app** · open in Chrome or Edge. Leave the GitHub username blank on Setup for the demo candidate; in the live room, ⚙ → Listen to → Demo answers runs a full interview with no call.
+
+Built at the Method (a GlobalLogic company) hackathon, Oct 2026, for the "Live Interview Integrity Engine" brief, by **Ali Chaaraoui** (team lead: live interview, report, library, deployment), **zeke75895** (scoring engine, APIs, Prep) and **Shailee Surti** (eye tracking, clips, learning).
+
+### Redeploying the live demo
+The demo runs on Vercel (project `gotcha`); the Groq key is stored there as a secret, never in the repo. From a checkout linked to that project:
+```
+npx vercel deploy --prod --yes
+```
+
 ## Run
 ```
 npm install
