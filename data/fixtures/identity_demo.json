@@ -1,0 +1,470 @@
+{
+  "clean": {
+    "label": "Consistent candidate",
+    "github": {
+      "login": "demo-candidate",
+      "name": "Jordan Reyes (demo)",
+      "avatarUrl": null,
+      "createdAt": "2022-08-10T14:02:00Z",
+      "location": "Charlotte, NC",
+      "company": null,
+      "blog": null,
+      "bio": "CS student at UNC Charlotte. Backend + infra.",
+      "publicRepos": 18,
+      "repos": [
+        {
+          "name": "ratelimit-proxy",
+          "description": "Token-bucket rate limiter in front of a Flask API, backed by Redis",
+          "language": "Python",
+          "fork": false,
+          "createdAt": "2025-06-21T00:00:00Z",
+          "pushedAt": "2026-09-30T00:00:00Z"
+        },
+        {
+          "name": "habit-tracker",
+          "description": "Next.js + Postgres habit tracker",
+          "language": "TypeScript",
+          "fork": false,
+          "createdAt": "2024-02-03T00:00:00Z",
+          "pushedAt": "2026-08-12T00:00:00Z"
+        },
+        {
+          "name": "log-shipper",
+          "description": "Small Go service that tails logs and ships them to S3",
+          "language": "Go",
+          "fork": false,
+          "createdAt": "2025-11-14T00:00:00Z",
+          "pushedAt": "2026-05-02T00:00:00Z"
+        },
+        {
+          "name": "dotfiles",
+          "description": null,
+          "language": "Shell",
+          "fork": false,
+          "createdAt": "2022-08-11T00:00:00Z",
+          "pushedAt": "2026-10-01T00:00:00Z"
+        },
+        {
+          "name": "itsc2214-labs",
+          "description": "Data structures lab starter code (TA)",
+          "language": "Java",
+          "fork": false,
+          "createdAt": "2025-01-09T00:00:00Z",
+          "pushedAt": "2025-05-02T00:00:00Z"
+        },
+        {
+          "name": "fastapi",
+          "description": "Fork to try a fix for a docs typo",
+          "language": "Python",
+          "fork": true,
+          "createdAt": "2024-10-01T00:00:00Z",
+          "pushedAt": "2024-10-02T00:00:00Z"
+        }
+      ],
+      "events": [
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-17T19:34:16Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-15T04:32:28Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-01T01:59:23Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-29T17:51:49Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-25T02:36:54Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-09-23T12:20:26Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-09-16T00:25:19Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-14T00:34:53Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-11T20:52:31Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-09-10T20:19:39Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-10T17:14:28Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-10T13:13:09Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-09T05:06:57Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-09-07T17:50:03Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-09-03T16:04:59Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-09-03T13:13:00Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-31T20:02:56Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-28T21:29:22Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-28T08:07:25Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-08-28T01:20:18Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-08-27T19:06:35Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-25T07:46:13Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-08-23T06:15:13Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-22T06:22:25Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-20T06:59:24Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-18T19:01:21Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-08-17T09:07:40Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-15T15:27:26Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-08-11T03:23:02Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-08T18:03:12Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-08-05T15:02:37Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-04T04:14:10Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-08-02T23:34:54Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-07-31T09:21:17Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-07-30T20:41:21Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-07-28T15:50:20Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-07-27T03:23:09Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-07-26T15:56:21Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-07-25T11:35:57Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-07-25T08:03:41Z"
+        }
+      ]
+    },
+    "input": {
+      "fullName": "Jordan Reyes",
+      "email": "jordan.reyes@example.edu",
+      "claimedLocation": "Charlotte, NC",
+      "claimedSchool": "UNC Charlotte",
+      "gradYear": 2027,
+      "pastedText": "About\nCS senior at UNC Charlotte. I like the boring parts of backend work: rate limits, retries, logs that actually help at 2am. Most of what I've built lives on my GitHub.\n\nExperience\nSoftware Engineering Intern \u00b7 Queen City Freight (fictional)\nJun 2025 - Aug 2025\nRewrote the shipment-status endpoint in Flask and put a Redis token bucket in front of it after a partner hammered us with retries. p95 went from 1.8s to 300ms.\n\nTeaching Assistant, ITSC 2214 Data Structures \u00b7 UNC Charlotte\nJan 2025 - May 2025\nRan two lab sections a week and wrote the autograder tests for the linked list and hash map assignments.\n\nEducation\nUniversity of North Carolina at Charlotte, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Flask, Redis, Postgres, TypeScript, Next.js, Go, Docker"
+    }
+  },
+  "suspicious": {
+    "label": "Suspicious profile",
+    "github": {
+      "login": "demo-suspect",
+      "name": "Ethan Brooks (demo)",
+      "avatarUrl": null,
+      "createdAt": "2008-03-14T09:30:00Z",
+      "location": "Austin, TX",
+      "company": "@BrightwaveConsulting",
+      "blog": null,
+      "bio": "Senior full-stack engineer | 12+ years",
+      "publicRepos": 9,
+      "repos": [
+        {
+          "name": "todo-app",
+          "description": "Todo app",
+          "language": "JavaScript",
+          "fork": false,
+          "createdAt": "2026-10-03T00:00:00Z",
+          "pushedAt": "2026-10-17T00:00:00Z"
+        },
+        {
+          "name": "portfolio",
+          "description": "My portfolio",
+          "language": "HTML",
+          "fork": false,
+          "createdAt": "2026-10-06T00:00:00Z",
+          "pushedAt": "2026-10-18T00:00:00Z"
+        },
+        {
+          "name": "landing-page",
+          "description": "Landing page template",
+          "language": "CSS",
+          "fork": false,
+          "createdAt": "2026-10-12T00:00:00Z",
+          "pushedAt": "2026-10-15T00:00:00Z"
+        },
+        {
+          "name": "kubernetes",
+          "description": "Production-Grade Container Scheduling and Management",
+          "language": "Go",
+          "fork": true,
+          "createdAt": "2026-10-04T00:00:00Z",
+          "pushedAt": "2026-10-04T00:00:00Z"
+        },
+        {
+          "name": "kafka",
+          "description": "Mirror of Apache Kafka",
+          "language": "Java",
+          "fork": true,
+          "createdAt": "2026-10-04T00:00:00Z",
+          "pushedAt": "2026-10-04T00:00:00Z"
+        },
+        {
+          "name": "tensorflow",
+          "description": "An Open Source Machine Learning Framework for Everyone",
+          "language": "C++",
+          "fork": true,
+          "createdAt": "2026-10-05T00:00:00Z",
+          "pushedAt": "2026-10-05T00:00:00Z"
+        },
+        {
+          "name": "pytorch",
+          "description": "Tensors and Dynamic neural networks in Python",
+          "language": "Python",
+          "fork": true,
+          "createdAt": "2026-10-05T00:00:00Z",
+          "pushedAt": "2026-10-05T00:00:00Z"
+        },
+        {
+          "name": "rust",
+          "description": "Empowering everyone to build reliable and efficient software.",
+          "language": "Rust",
+          "fork": true,
+          "createdAt": "2026-10-05T00:00:00Z",
+          "pushedAt": "2026-10-05T00:00:00Z"
+        },
+        {
+          "name": "react",
+          "description": "The library for web and native user interfaces.",
+          "language": "JavaScript",
+          "fork": true,
+          "createdAt": "2026-10-06T00:00:00Z",
+          "pushedAt": "2026-10-06T00:00:00Z"
+        }
+      ],
+      "events": [
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-17T08:46:59Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-17T06:04:50Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-16T06:01:05Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-15T23:02:03Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-15T14:23:18Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-15T07:53:34Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-14T23:14:03Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-14T22:52:52Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-13T17:59:09Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-13T14:18:10Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-13T12:32:13Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-13T08:34:39Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-13T05:46:49Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-13T03:25:55Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-11T21:58:23Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-11T16:03:38Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-11T11:52:58Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-11T00:27:09Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-10T02:40:31Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-09T20:23:30Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-09T00:35:30Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-08T23:14:35Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-08T07:58:01Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-08T04:55:18Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-06T11:30:16Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-06T06:33:17Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-05T17:38:36Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-04T22:33:44Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-04T18:09:16Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-04T05:52:28Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-04T05:00:33Z"
+        },
+        {
+          "type": "PullRequestEvent",
+          "createdAt": "2026-10-03T23:23:59Z"
+        },
+        {
+          "type": "CreateEvent",
+          "createdAt": "2026-10-03T04:20:33Z"
+        },
+        {
+          "type": "PushEvent",
+          "createdAt": "2026-10-03T01:28:25Z"
+        }
+      ]
+    },
+    "input": {
+      "fullName": "Ethan Brooks",
+      "email": "ethan.brooks@example.com",
+      "claimedLocation": "Raleigh, NC",
+      "claimedSchool": "NC State",
+      "gradYear": 2027,
+      "pastedText": "About\nResults-driven and passionate Software Engineer with a proven track record of leveraging cutting-edge technologies to deliver scalable, robust solutions in fast-paced, dynamic environments. Current student at NC State, class of 2027. 8+ years of experience.\n\nExperience\nSenior Software Engineer \u00b7 Nimbus Data Systems (fictional)\nJan 2019 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Collaborated with cross-functional teams to deliver high-impact solutions.\n\nMachine Learning Engineer \u00b7 Arclight AI (fictional)\nMar 2020 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Leveraged TensorFlow and PyTorch to drive data-driven insights for key stakeholders.\n\nEducation\nNorth Carolina State University, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Java, Kubernetes, Kafka, Rust, TensorFlow, PyTorch, AWS, React, GraphQL"
+    }
+  }
+}

@@ -179,6 +179,7 @@ export interface Session {
   checklist: Checklist;
   claims: PinnedClaim[];
   verdicts: Record<string, Verdict>; // keyed by flag id
+  identity?: IdentityReport; // Setup: does the profile hold together?
 }
 
 // ---------- Learning from past interviews ----------
@@ -233,4 +234,47 @@ export interface ScoreRequest {
   checklist: Checklist;
   weights: Weights;
   knownAi: KnownAiAnswer[];
+}
+
+// ---------- Identity consistency (Setup) ----------
+export type IdentityStatus = "ok" | "warn" | "risk" | "unknown";
+
+export interface IdentityCheck {
+  id: "timeline_account" | "timeline_resume" | "location" | "skills" | "copied_text" | "activity";
+  label: string;
+  status: IdentityStatus;
+  why: string; // plain English
+}
+
+/** What the recruiter already has: pasted LinkedIn/resume text and what the candidate claims. LinkedIn stays view-only. */
+export interface IdentityRequest {
+  login?: string;
+  fullName?: string;
+  email?: string;
+  pastedText?: string; // LinkedIn About + Experience + Education, and/or resume
+  claimedLocation?: string;
+  claimedSchool?: string;
+  gradYear?: number;
+}
+
+/** A GitHub account that might be theirs. Shown for the recruiter to confirm, never linked automatically. */
+export interface GithubMatch {
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
+  location: string | null;
+  createdAt: string | null;
+  url: string;
+  why: string; // how we found it
+}
+
+export interface IdentityReport {
+  score: number; // 0..100, higher = more that doesn't line up
+  level: "consistent" | "mixed" | "inconsistent";
+  headline: string;
+  checks: IdentityCheck[];
+  questions: string[]; // to verify identity in the interview
+  matches?: GithubMatch[];
+  githubSource: "live" | "cache" | "fixture" | "none";
+  textSource: "groq" | "heuristic" | "none";
 }
