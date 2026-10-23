@@ -71,39 +71,144 @@ type IdentityState = ReturnType<typeof useIdentity>;
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7).toString(36);
 
 // ---------- Inputs (left column on Setup) ----------
+// One paste box per LinkedIn section, so the recruiter can copy them one at a time.
+const SECTIONS = [
+  { key: "about", label: "About", hint: "Their LinkedIn About / summary" },
+  { key: "experience", label: "Experience", hint: "Each job: title, company, dates (e.g. Jun 2025 – Aug 2025), what they did" },
+  { key: "education", label: "Education", hint: "School, degree, years (e.g. 2023 – 2027)" },
+  { key: "other", label: "Skills & other", hint: "Skills list, or paste a whole resume here" },
+] as const;
+type SectionKey = (typeof SECTIONS)[number]["key"];
+type Sections = Record<SectionKey, string>;
+const HEADER: Record<string, SectionKey> = { about: "about", summary: "about", experience: "experience", education: "education", skills: "other", resume: "other" };
+
+/** Split pasted text with "About / Experience / Education / Skills" header lines into sections. */
+export function splitSections(text: string): Sections {
+  const out: Sections = { about: "", experience: "", education: "", other: "" };
+  let cur: SectionKey = "other";
+  text.split("\n").forEach((line) => {
+    const h = HEADER[line.trim().toLowerCase()];
+    if (h) cur = h;
+    else out[cur] += `${line}\n`;
+  });
+  (Object.keys(out) as SectionKey[]).forEach((k) => (out[k] = out[k].trim()));
+  return out;
+}
+const joinSections = (s: Sections) =>
+  SECTIONS.filter((x) => s[x.key].trim()).map((x) => `${x.key === "other" ? "Skills" : x.label}\n${s[x.key]}`).join("\n\n");
+
 export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (login: string) => void }) {
   const { input, setInput } = id;
   const [open, setOpen] = useState(!!input.pastedText);
+  const [tab, setTab] = useState<SectionKey>("about");
+  // Raw text per box (not re-split on every keystroke, so Enter and spaces stay put)
+  const [sections, setSections] = useState<Sections>(() => splitSections(input.pastedText ?? ""));
+  const setAll = (next: Sections) => {
+    setSections(next);
+    setInput({ pastedText: joinSections(next) });
+  };
+  const setSection = (k: SectionKey, v: string) => setAll({ ...sections, [k]: v });
+  const filled = SECTIONS.filter((x) => sections[x.key].trim()).length;
+  const current = SECTIONS.find((x) => x.key === tab)!;
+
   const fill = (d: { input: IdentityRequest; github: { login: string } }) => {
     setInput({ ...d.input, login: undefined });
+    setSections(splitSections(d.input.pastedText ?? ""));
     onDemo(d.github.login);
     setOpen(true);
+    setTab("about");
   };
+  async function paste() {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t) setSection(tab, sections[tab] ? `${sections[tab]}\n${t}` : t);
+    } catch {
+      // Clipboard blocked: Cmd+V into the box still works
+    }
+  }
+  const clear = () => {
+    setSections(splitSections(""));
+    setInput({ pastedText: "", fullName: "", email: "", claimedLocation: "", claimedSchool: "", gradYear: undefined });
+  };
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <button className="label hover:text-white/80" onClick={() => setOpen(!open)}>{open ? "▾" : "▸"} Identity details (optional)</button>
-        <span className="text-xs text-white/40">Demo:</span>
-        <button className="chip hover:bg-white/15" onClick={() => fill(demo.clean)}>{demo.clean.label}</button>
-        <button className="chip hover:bg-white/15" onClick={() => fill(demo.suspicious)}>{demo.suspicious.label}</button>
-      </div>
-      {open && (
-        <div className="grid gap-3">
-          <label className="space-y-1.5">
-            <span className="text-xs text-white/50">Paste their LinkedIn About + Experience + Education, and/or resume (copy it by hand; we never scrape LinkedIn)</span>
-            <textarea className="input min-h-[120px] rounded-2xl" value={input.pastedText ?? ""} onChange={(e) => setInput({ pastedText: e.target.value })} placeholder="About… Experience… Education…" />
-          </label>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <input className="input" placeholder="Full name" value={input.fullName ?? ""} onChange={(e) => setInput({ fullName: e.target.value })} />
-            <input className="input" placeholder="Email" value={input.email ?? ""} onChange={(e) => setInput({ email: e.target.value })} />
-            <input className="input" placeholder="Claimed location (Raleigh, NC)" value={input.claimedLocation ?? ""} onChange={(e) => setInput({ claimedLocation: e.target.value })} />
-            <input className="input" placeholder="Claimed school" value={input.claimedSchool ?? ""} onChange={(e) => setInput({ claimedSchool: e.target.value })} />
-            <input className="input" placeholder="Grad year" inputMode="numeric" value={input.gradYear ?? ""} onChange={(e) => setInput({ gradYear: +e.target.value.replace(/\D/g, "") || undefined })} />
-            <button className="btn-ghost" onClick={() => id.run()} disabled={id.loading}>{id.loading ? "Checking…" : "Check identity"}</button>
+    <div className="space-y-3 rounded-3xl border border-white/10 bg-black/15 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <button className="text-left" onClick={() => setOpen(!open)}>
+          <div className="label">{open ? "▾" : "▸"} Identity check · optional</div>
+          <div className="mt-1 text-sm text-white/60">
+            {open ? "Copy what you see on their LinkedIn or resume. We compare it with their GitHub." : filled ? `${filled} of 4 sections pasted${input.fullName ? ` for ${input.fullName}` : ""}` : "Paste their LinkedIn or resume to check it against GitHub, or find their GitHub by name."}
           </div>
+        </button>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-white/40">Try:</span>
+          <button className="chip hover:bg-white/15" onClick={() => fill(demo.clean)}>{demo.clean.label}</button>
+          <button className="chip hover:bg-white/15" onClick={() => fill(demo.suspicious)}>{demo.suspicious.label}</button>
         </div>
+      </div>
+
+      {open && (
+        <>
+          <div>
+            <div className="flex flex-wrap gap-1.5" role="tablist">
+              {SECTIONS.map((x) => (
+                <button
+                  key={x.key}
+                  role="tab"
+                  aria-selected={tab === x.key}
+                  onClick={() => setTab(x.key)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm transition ${tab === x.key ? "bg-white text-black" : "border border-white/15 text-white/75 hover:bg-white/10"}`}
+                >
+                  {sections[x.key].trim() && <span className={tab === x.key ? "text-clear" : "text-clear/90"}>✓ </span>}
+                  {x.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2.5">
+              <textarea
+                className="block min-h-[200px] w-full resize-y rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm leading-relaxed text-white outline-none placeholder:text-white/35 focus:border-white/50"
+                value={sections[tab]}
+                onChange={(e) => setSection(tab, e.target.value)}
+                placeholder={`${current.hint}\n\nCopy it from LinkedIn and paste here (Cmd+V). LinkedIn stays view-only; we never scrape it.`}
+                aria-label={`${current.label} text`}
+              />
+              <div className="mt-1.5 flex items-center justify-between px-1">
+                <span className="text-[11px] text-white/35">{sections[tab] ? `${sections[tab].trim().split(/\s+/).length} words` : ""}</span>
+                <div className="flex gap-1.5">
+                  {sections[tab] && <button className="chip hover:bg-white/15" onClick={() => setSection(tab, "")}>Clear</button>}
+                  <button className="chip hover:bg-white/15" onClick={paste}>Paste</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+            <Field className="md:col-span-3" label="Full name" placeholder="Ethan Brooks" value={input.fullName} onChange={(v) => setInput({ fullName: v })} />
+            <Field className="md:col-span-3" label="Email" placeholder="name@school.edu" value={input.email} onChange={(v) => setInput({ email: v })} />
+            <Field className="md:col-span-2" label="Says they live in" placeholder="Raleigh, NC" value={input.claimedLocation} onChange={(v) => setInput({ claimedLocation: v })} />
+            <Field className="md:col-span-3" label="Says they study at" placeholder="NC State" value={input.claimedSchool} onChange={(v) => setInput({ claimedSchool: v })} />
+            <Field label="Grad year" placeholder="2027" value={input.gradYear ? String(input.gradYear) : ""} onChange={(v) => setInput({ gradYear: +v.replace(/\D/g, "").slice(0, 4) || undefined })} numeric />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button className="btn-ghost px-5" onClick={() => id.run()} disabled={id.loading || (!filled && !input.fullName && !input.email)}>
+              {id.loading ? "Checking…" : "Check identity"}
+            </button>
+            <span className="text-xs text-white/45">No GitHub username above? We&apos;ll search GitHub by name and email for you to confirm.</span>
+            {(filled > 0 || input.fullName) && <button className="ml-auto text-xs text-white/40 hover:text-white/70" onClick={clear}>Clear all</button>}
+          </div>
+        </>
       )}
     </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, className = "", numeric }: { label: string; value?: string; onChange: (v: string) => void; placeholder: string; className?: string; numeric?: boolean }) {
+  return (
+    <label className={`space-y-1 ${className}`}>
+      <span className="block px-1 text-xs text-white/50">{label}</span>
+      <input className="input" placeholder={placeholder} value={value ?? ""} inputMode={numeric ? "numeric" : undefined} onChange={(e) => onChange(e.target.value)} />
+    </label>
   );
 }
 
