@@ -64,6 +64,7 @@ interface Store {
   setProfile: (p: CandidateProfile) => void;
   setTrack: (id: string) => void;
   addQuestions: (qs: Question[]) => void;
+  removeQuestion: (qid: string) => void;
   markAsked: (qid: string) => void;
   recordAnswer: (e: AnswerEvent, g: GazeWindow | null, sc: Score) => void;
   addFlag: (f: Omit<Flag, "id">) => Flag;
@@ -117,6 +118,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTrack: (id) => update((s) => ({ ...s, trackId: id })),
     addQuestions: (qs) => update((s) => ({ ...s, questions: [...s.questions.filter((q) => !qs.some((n) => n.id === q.id)), ...qs] })),
     // The interview clock starts at the first question asked (used for "minutes to first flag")
+    removeQuestion: (qid) => update((s) => ({ ...s, questions: s.questions.filter((q) => q.id !== qid) })),
     markAsked: (qid) => update((s) => (s.trackPath.includes(qid) ? s : { ...s, startedAt: s.trackPath.length ? s.startedAt : Date.now(), trackPath: [...s.trackPath, qid] })),
     recordAnswer: (e, g, sc) =>
       update((s) => ({
@@ -134,7 +136,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addClaim: (c) => update((s) => ({ ...s, claims: [...s.claims, c] })),
     setVerdict: (flagId, v) => update((s) => ({ ...s, verdicts: { ...s.verdicts, [flagId]: v } })),
     finishInterview: () => {
-      const { past, newKnownAi } = sessionToPast(session);
+      const { past, newKnownAi } = sessionToPast(session, knownAi);
       const h = [...savedHistory.filter((x) => x.id !== past.id), past];
       const k = [...savedKnownAi.filter((x) => !newKnownAi.some((n) => n.id === x.id)), ...newKnownAi];
       setSavedHistory(h);
@@ -172,8 +174,10 @@ export function useStore() {
 /** All questions available right now: the ordered track + personalized + custom, with {repo} filled. */
 export function allQuestions(track: Track, session: Session): Question[] {
   const repo = session.profile?.repos[0]?.name;
-  const base = track.stages.flatMap((s) => s.questions).map((q) => (repo && q.text.includes("{repo}") ? { ...q, text: q.text.replace("{repo}", repo), repoRef: repo } : q));
-  return [...base, ...session.questions].map((q) => (AI_LIBRARY[q.id] && !q.aiAnswers ? { ...q, aiAnswers: AI_LIBRARY[q.id].answers } : q));
+  // A session question with a track question's id (e.g. /api/questions' personalized be-p1) replaces it in place
+  const byId = new Map(session.questions.map((q) => [q.id, q]));
+  const base = track.stages.flatMap((s) => s.questions).map((q) => byId.get(q.id) ?? (repo && q.text.includes("{repo}") ? { ...q, text: q.text.replace("{repo}", repo), repoRef: repo } : q));
+  return [...base, ...session.questions.filter((q) => !base.some((b) => b.id === q.id))].map((q) => (AI_LIBRARY[q.id] && !q.aiAnswers ? { ...q, aiAnswers: AI_LIBRARY[q.id].answers } : q));
 }
 
 /** Turn one of Sarah's gotchas into an askable question. */
