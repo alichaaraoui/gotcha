@@ -29,7 +29,8 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
   const [status, setStatus] = useState<"off" | "loading" | "on" | "error">("off");
   const [source, setSource] = useState<"webcam" | "screen" | "call">("webcam");
   const [mode, setMode] = useState<GazeMode>("auto");
-  const [ui, setUi] = useState<{ off: boolean; used: "gaze" | "head"; q: GazeQuality | null; face: boolean }>({ off: false, used: "gaze", q: null, face: false });
+  const [ui, setUi] = useState<{ off: boolean; offCam: boolean; used: "gaze" | "head"; q: GazeQuality | null; face: boolean }>({ off: false, offCam: false, used: "gaze", q: null, face: false });
+  const hotspot = useRef<ReturnType<EyeTracker["liveHotspot"]>>(null);
   const [error, setError] = useState("");
 
   useImperativeHandle(ref, () => ({
@@ -87,7 +88,8 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
         const now = performance.now();
         if (now - lastUi.current > 250) {
           lastUi.current = now;
-          setUi({ off: t.isOff(smp), used: t.effectiveMode(), q: t.quality(), face: smp.face });
+          setUi({ off: t.isOff(smp), offCam: t.isOffCamera(smp), used: t.effectiveMode(), q: t.quality(), face: smp.face });
+          hotspot.current = t.liveHotspot();
         }
       };
       t.start(video.current!);
@@ -124,7 +126,21 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
     ctx.strokeStyle = "rgba(148,163,184,0.7)";
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, bw, bh);
-    const off = t.isOff(smp);
+    // Camera / "talking to you" point, and the spot they keep going back to (last 30 s)
+    ctx.strokeStyle = "rgba(148,163,184,0.5)";
+    ctx.beginPath();
+    ctx.moveTo(bx + bw / 2 - 4, by + bh / 2); ctx.lineTo(bx + bw / 2 + 4, by + bh / 2);
+    ctx.moveTo(bx + bw / 2, by + bh / 2 - 4); ctx.lineTo(bx + bw / 2, by + bh / 2 + 4);
+    ctx.stroke();
+    const hs = hotspot.current;
+    if (hs && hs.visits >= 3) {
+      // hotspot dx is from the candidate's view (their right = +) → back to frame coordinates
+      ctx.strokeStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(bx + bw / 2 - hs.dx * (bw / 2), by + bh / 2 + hs.dy * (bh / 2), 6, 0, 7);
+      ctx.stroke();
+    }
+    const off = t.isOff(smp) || t.isOffCamera(smp);
     const gx = bx + bw / 2 + dx * (bw / 2 + 6);
     const gy = by + bh / 2 + dy * (bh / 2 + 6);
     ctx.fillStyle = off ? "#f97316" : "#22c55e";
@@ -140,8 +156,8 @@ export const EyePanel = forwardRef<EyePanelHandle, { emphasize: boolean; stream?
     <div className={`card space-y-2 ${emphasize ? "ring-2 ring-watch/60" : ""}`}>
       <div className="flex items-center justify-between">
         <span className="label">Eye patterns</span>
-        <span className={`text-xs ${status !== "on" ? "text-slate-400" : !ui.face ? "text-slate-400" : ui.off ? "text-warn" : "text-clear"}`}>
-          {status === "on" ? (!ui.face ? "No face found" : ui.off ? "Looking away" : "On screen") : status === "loading" ? "Loading model…" : status === "error" ? "Couldn't start" : "Off"}
+        <span className={`text-xs ${status !== "on" ? "text-slate-400" : !ui.face ? "text-slate-400" : ui.off ? "text-warn" : ui.offCam ? "text-watch" : "text-clear"}`}>
+          {status === "on" ? (!ui.face ? "No face found" : ui.off ? "Looking away" : ui.offCam ? "Looking elsewhere on screen" : "Looking at you") : status === "loading" ? "Loading model…" : status === "error" ? "Couldn't start" : "Off"}
         </span>
       </div>
       <div className="relative aspect-video overflow-hidden rounded-lg bg-black">

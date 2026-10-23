@@ -8,7 +8,7 @@ import { LEVEL_STYLE, METHOD_LABEL } from "@/components/ui";
 import { overlapIndexes, similarity, words } from "@/lib/scoring/text";
 import { FIRING } from "@/lib/scoring/fuse";
 import { PENDING_CLIP, seekToTail } from "@/lib/clips";
-import type { AnswerEvent, Flag, GazeWindow, Level, Question, Score, Session } from "@/lib/types";
+import type { AnswerEvent, Flag, GazeHotspot, GazeWindow, Level, Question, Score, Session } from "@/lib/types";
 
 const SEVERITY: Record<Level, number> = { flag: 3, warn: 2, watch: 1, clear: 0 };
 const PAUSE_MS = 700; // same "thinking pause" cut-off as the scorer
@@ -324,11 +324,19 @@ function PausePattern({ e }: { e: AnswerEvent }) {
   );
 }
 
+function spotWhere(h: GazeHotspot) {
+  const v = h.dy > 0.3 ? "below" : h.dy < -0.3 ? "above" : "";
+  const sd = Math.abs(h.dx) > 0.3 ? `their ${h.dx > 0 ? "right" : "left"}` : "";
+  return [v, sd].filter(Boolean).join(", ") || "off-camera";
+}
+
 function EyeRow({ g }: { g: GazeWindow }) {
   const items = [
     { label: "Looking away", v: `${Math.round(g.offScreenPct * 100)}%`, hot: g.offScreenPct > 0.35 },
     { label: "Reading sweeps", v: `${fmt(g.readingSweeps, 1)}/min`, hot: g.readingSweeps >= 7 },
     { label: "Side glances", v: Math.abs(g.sideBias) < 0.3 ? "no pattern" : `mostly their ${g.sideBias > 0 ? "right" : "left"}`, hot: Math.abs(g.sideBias) > 0.5 },
+    ...(g.offCameraPct != null ? [{ label: "Elsewhere on screen", v: `${Math.round(g.offCameraPct * 100)}%`, hot: g.offCameraPct > 0.3 }] : []),
+    ...(g.hotspot && g.hotspot.visits >= 3 ? [{ label: "Same spot", v: `${g.hotspot.visits}× ${spotWhere(g.hotspot)}, ${Math.round(g.hotspot.dwellPct * 100)}% of answer`, hot: true }] : []),
     { label: "Blinks", v: `${fmt(g.blinkRate)}/min`, hot: false },
     { label: "vs. warm-up", v: `${Math.round(g.baselineDelta * 100)}% different`, hot: g.baselineDelta >= FIRING },
   ];

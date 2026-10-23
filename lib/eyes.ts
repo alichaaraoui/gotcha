@@ -8,7 +8,13 @@
 // yaw/pitch, readingSweeps = 0. The EyePanel lets you force either mode.
 //
 // Left/right in sideBias is from the CANDIDATE's point of view (their right = +1).
-import type { GazeWindow } from "@/lib/types";
+//
+// Off-camera spots: besides looking off the screen, we catch looking at ANOTHER POINT ON the screen
+// (a second window, a phone propped by the monitor). Gaze resting >= 250 ms is a fixation; fixations
+// clearly away from where they look while talking to you are grouped into spots, and the spot they
+// keep going back to is the hotspot. "Where they look while talking to you" is locked in during the
+// warm-up so someone reading most of the time can't drag the reference onto their notes.
+import type { GazeHotspot, GazeWindow } from "@/lib/types";
 
 // Served locally first (works offline; see scripts/copy-mediapipe.mjs), CDN as a fallback.
 const SOURCES = [
@@ -59,6 +65,11 @@ export const TH = {
   sweepMinMs: 300,
   sweepMaxMs: 4000,
   sweepReturnMs: 400, // the "line return" has to be quick
+  // Off-camera spots, in units where 1 = the off-screen threshold (TH.x sideways, TH.yDown vertically)
+  camR: 0.35, // further than this from their normal point = not looking at you
+  fixR: 0.2, // gaze stays within this radius = one fixation
+  fixMinMs: 250,
+  spotR: 0.3, // fixations this close are the same spot
 };
 
 export class EyeTracker {
@@ -69,7 +80,8 @@ export class EyeTracker {
   private samples: GazeSample[] = [];
   private prev: GazeSample | null = null;
   private blinkOn = false;
-  private base = { n: 0, off: 0, sweeps: 0, side: 0, blinks: 0 };
+  private base = { n: 0, off: 0, sweeps: 0, side: 0, blinks: 0, offCam: 0 };
+  private baseCentre: { n: number; x: number; y: number; yaw: number; pitch: number } | null = null;
   mode: GazeMode = "auto";
   onSample?: (s: GazeSample, landmarks: { x: number; y: number }[] | null) => void;
 
@@ -169,14 +181,33 @@ export class EyeTracker {
     return this.quality().gazeReliable ? "gaze" : "head";
   }
 
+  /** Reference point: the warm-up centre once we have one, else the rolling median. */
+  centre() {
+    return this.baseCentre ?? centre(this.samples);
+  }
+
   /** Is this sample off-screen? (for the live indicator) */
   isOff(s: GazeSample): boolean {
-    return offScreen(s, centre(this.samples), this.effectiveMode());
+    return offScreen(s, this.centre(), this.effectiveMode());
+  }
+
+  /** On screen but resting away from the camera / interviewer (gaze mode only). */
+  isOffCamera(s: GazeSample): boolean {
+    if (this.effectiveMode() !== "gaze" || !s.face || s.blink) return false;
+    const e = norm(s, this.centre());
+    return Math.hypot(e.ex, e.ey) >= TH.camR && !this.isOff(s);
+  }
+
+  /** The off-camera spot of the last `ms` (for the live overlay). */
+  liveHotspot(ms = 30000): GazeHotspot | null {
+    if (this.effectiveMode() !== "gaze") return null;
+    const s = this.samples.filter((x) => x.t >= Date.now() - ms);
+    return offCamera(s, this.centre(), ms).hotspot;
   }
 
   /** Where the candidate is looking relative to their own centre, roughly -1..1 (for the gaze dot). */
   relative(s: GazeSample): { dx: number; dy: number } {
-    const c = centre(this.samples);
+    const c = this.centre();
     const head = this.effectiveMode() === "head";
     const dx = head ? (s.yaw - c.yaw) / (TH.yaw * 2) : (s.x - c.x) / (TH.x * 2) + (s.yaw - c.yaw) / (TH.yaw * 4);
     const dy = head ? (s.pitch - c.pitch) / (TH.pitchDown * 2) : (s.y - c.y) / (TH.yDown * 2);
@@ -186,12 +217,21 @@ export class EyeTracker {
   /** Summarize samples between two timestamps into a GazeWindow. */
   window(questionId: string, from: number, to: number, isBaseline = false): GazeWindow {
     const s = this.samples.filter((x) => x.t >= from && x.t <= to);
-    const m = summarize(s, centre(this.samples), this.effectiveMode(), to - from);
+    if (isBaseline && s.length > 30) {
+      // Lock the "talking to you" point from the warm-up answers (running mean of their medians)
+      const c = centre(s);
+      const b = this.baseCentre, k = (b?.n ?? 0) + 1;
+      this.baseCentre = b
+        ? { n: k, x: b.x + (c.x - b.x) / k, y: b.y + (c.y - b.y) / k, yaw: b.yaw + (c.yaw - b.yaw) / k, pitch: b.pitch + (c.pitch - b.pitch) / k }
+        : { n: 1, ...c };
+    }
+    const mode = this.effectiveMode();
+    const m = summarize(s, this.centre(), mode, to - from);
     if (isBaseline) {
       // Running mean over the warm-up answers
       const b = this.base;
       const k = b.n + 1;
-      this.base = { n: k, off: b.off + (m.off - b.off) / k, sweeps: b.sweeps + (m.sweeps - b.sweeps) / k, side: b.side + (m.side - b.side) / k, blinks: b.blinks + (m.blinks - b.blinks) / k };
+      this.base = { n: k, off: b.off + (m.off - b.off) / k, sweeps: b.sweeps + (m.sweeps - b.sweeps) / k, side: b.side + (m.side - b.side) / k, blinks: b.blinks + (m.blinks - b.blinks) / k, offCam: b.offCam + (m.offCam - b.offCam) / k };
     }
     const b = this.base;
     const baselineDelta = b.n
@@ -199,10 +239,12 @@ export class EyeTracker {
           Math.abs(m.off - b.off) * 1.5 +
           Math.max(0, m.sweeps - b.sweeps) / 10 +
           Math.abs(m.side - b.side) * 0.5 +
+          Math.max(0, m.offCam - b.offCam) * 1.2 +
           Math.min(0.3, (Math.abs(m.blinks - b.blinks) / Math.max(8, b.blinks)) * 0.3))
       : 0;
     const r2 = (x: number) => Math.round(x * 100) / 100;
-    return { questionId, offScreenPct: r2(m.off), readingSweeps: r2(m.sweeps), sideBias: r2(m.side), blinkRate: r2(m.blinks), baselineDelta: r2(baselineDelta) };
+    const hotspot = m.hotspot && { dx: r2(m.hotspot.dx), dy: r2(m.hotspot.dy), visits: m.hotspot.visits, dwellPct: r2(m.hotspot.dwellPct) };
+    return { questionId, offScreenPct: r2(m.off), readingSweeps: r2(m.sweeps), sideBias: r2(m.side), blinkRate: r2(m.blinks), baselineDelta: r2(baselineDelta), offCameraPct: r2(m.offCam), hotspot };
   }
 }
 
@@ -265,7 +307,69 @@ export function summarize(s: GazeSample[], c: ReturnType<typeof centre>, mode: "
   const off = offFlags.filter(Boolean).length / n;
   const open = s.filter((x) => x.face && !x.blink);
   const sweeps = mode === "gaze" ? Math.max(countSweeps(open, 1), countSweeps(open, -1)) / mins : 0;
-  return { off, sweeps, side: sideBias(s, offFlags, c, mode), blinks: countBlinks(s) / mins };
+  const cam = mode === "gaze" ? offCamera(s, c, durMs) : { pct: 0, hotspot: null };
+  return { off, sweeps, side: sideBias(s, offFlags, c, mode), blinks: countBlinks(s) / mins, offCam: cam.pct, hotspot: cam.hotspot };
+}
+
+/** Gaze offset from their normal point, scaled so 1 = the off-screen threshold. */
+function norm(s: GazeSample, c: ReturnType<typeof centre>) {
+  return { ex: (s.x - c.x) / TH.x, ey: (s.y - c.y) / TH.yDown };
+}
+
+interface Fixation { ex: number; ey: number; t0: number; t1: number }
+
+/** Runs of open-eye samples whose gaze stays within TH.fixR of their running mean for >= TH.fixMinMs. */
+export function fixations(s: GazeSample[], c: ReturnType<typeof centre>): Fixation[] {
+  const out: Fixation[] = [];
+  let run: { ex: number; ey: number; n: number; t0: number; t1: number } | null = null;
+  const close = () => {
+    if (run && run.t1 - run.t0 >= TH.fixMinMs) out.push({ ex: run.ex, ey: run.ey, t0: run.t0, t1: run.t1 });
+    run = null;
+  };
+  for (const x of s) {
+    if (!x.face || x.blink) continue; // a blink doesn't end a fixation
+    const e = norm(x, c);
+    if (run && Math.hypot(e.ex - run.ex, e.ey - run.ey) <= TH.fixR && x.t - run.t1 < 300) {
+      run.n++;
+      run.ex += (e.ex - run.ex) / run.n;
+      run.ey += (e.ey - run.ey) / run.n;
+      run.t1 = x.t;
+    } else {
+      close();
+      run = { ex: e.ex, ey: e.ey, n: 1, t0: x.t, t1: x.t };
+    }
+  }
+  close();
+  return out;
+}
+
+/**
+ * Time spent resting on other points of the screen, and the spot they kept returning to.
+ * A "visit" only counts after looking somewhere else (back at you, or another spot) in between.
+ */
+export function offCamera(s: GazeSample[], c: ReturnType<typeof centre>, durMs: number): { pct: number; hotspot: GazeHotspot | null } {
+  const fx = fixations(s, c);
+  const spots: { ex: number; ey: number; dwell: number; visits: number }[] = [];
+  let last = -2; // -1 = looking at you, k = spot k
+  for (const f of fx) {
+    const r = Math.hypot(f.ex, f.ey);
+    if (r < TH.camR) { last = -1; continue; }
+    if (r > 2.5) continue; // way off the screen: offScreenPct already covers it
+    let k = spots.findIndex((p) => Math.hypot(p.ex - f.ex, p.ey - f.ey) <= TH.spotR);
+    if (k < 0) { spots.push({ ex: f.ex, ey: f.ey, dwell: 0, visits: 0 }); k = spots.length - 1; }
+    const p = spots[k], d = f.t1 - f.t0;
+    p.ex += ((f.ex - p.ex) * d) / (p.dwell + d);
+    p.ey += ((f.ey - p.ey) * d) / (p.dwell + d);
+    p.dwell += d;
+    if (last !== k) p.visits++;
+    last = k;
+  }
+  const dur = Math.max(1, durMs);
+  const pct = Math.min(1, spots.reduce((a, p) => a + p.dwell, 0) / dur);
+  const top = [...spots].sort((a, b) => b.visits - a.visits || b.dwell - a.dwell)[0];
+  if (!top || top.visits < 2) return { pct, hotspot: null };
+  // Image-left = candidate's right, so flip dx; scale so ±1 ≈ the screen edge
+  return { pct, hotspot: { dx: -top.ex, dy: top.ey, visits: top.visits, dwellPct: Math.min(1, top.dwell / dur) } };
 }
 
 /**
