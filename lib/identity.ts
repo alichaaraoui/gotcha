@@ -1,7 +1,7 @@
 // Identity consistency: does the profile hold together? Pure functions, no network.
 // Catches copied/template LinkedIns, impossible timelines, and GitHubs that don't match the person.
 // The tool suggests, the recruiter decides.
-import type { CandidateProfile, CandidateStory, IdentityCheck, IdentityReport, IdentityRequest, IdentityStatus } from "@/lib/types";
+import type { CandidateProfile, CandidateStory, IdentityCheck, IdentityReport, IdentityRequest, IdentityStatus, PublicProfile } from "@/lib/types";
 
 /** Raw GitHub fields the identity checks need (more than CandidateProfile keeps). */
 export interface GithubFacts {
@@ -16,6 +16,14 @@ export interface GithubFacts {
   publicRepos: number;
   repos: { name: string; description: string | null; language: string | null; fork: boolean; createdAt: string; pushedAt: string }[];
   events: { type: string; createdAt: string }[];
+}
+
+/** Public presence beyond GitHub (lib/presence.ts fetches it; fixtures for the demo). */
+export interface PresenceFacts {
+  email?: { domain: string; edu: boolean; disposable: boolean; mx: boolean | null };
+  gravatar?: { url: string; name: string | null; location: string | null; accounts: { service: string; url: string }[] } | null;
+  website?: { url: string; ok: boolean; title: string | null; text: string; links: string[]; registeredAt: string | null; platform: boolean } | null;
+  stackoverflow?: { name: string; url: string; location: string | null; createdAt: string; reputation: number }[];
 }
 
 /** Groq's read of the pasted text (route passes it in; null when Groq is off). */
@@ -128,7 +136,7 @@ const SCHOOL_STOP = new Set(["university", "of", "the", "at", "college", "state"
 function placeKeys(loc: string): string[] {
   const parts = loc.split(",").map((p) => p.trim().toLowerCase()).filter(Boolean);
   const keys = new Set<string>();
-  parts.forEach((p) => {
+  parts.map(country).forEach((p) => {
     if (STATES[p]) keys.add(STATES[p]);
     const full = Object.entries(STATES).find(([, n]) => n === p);
     if (full) keys.add(full[1]);
@@ -136,8 +144,10 @@ function placeKeys(loc: string): string[] {
   });
   return [...keys];
 }
+const COUNTRY: Record<string, string> = { uk: "united kingdom", "u k": "united kingdom", england: "united kingdom", usa: "united states", us: "united states", "u s a": "united states", america: "united states" };
+const country = (p: string) => COUNTRY[norm(p).trim()] ?? p;
 function placeMatches(claimed: string, gh: string): boolean {
-  const g = norm(gh.split(",").map((p) => STATES[p.trim().toLowerCase()] ?? p).join(" "));
+  const g = norm(gh.split(",").map((p) => STATES[p.trim().toLowerCase()] ?? country(p)).join(" "));
   return placeKeys(claimed).some((k) => g.includes(norm(k)));
 }
 function schoolMatches(claimed: string, gh: string): boolean {
@@ -286,12 +296,150 @@ export function sameTimeEvents(gh: GithubFacts): { n: number; time: string } | n
   return time && days && days.size >= 5 ? { n: days.size, time } : null;
 }
 
+// ---------- Check 7: LinkedIn (URL + what the recruiter sees on the page) ----------
+const MON = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+/** "2022-09", "Sep 2022", "September 2022" or "2022" → { y, m } */
+export function parseYm(s?: string): { y: number; m: number } | null {
+  if (!s) return null;
+  const iso = s.match(/((?:19|20)\d{2})(?:[-/](\d{1,2}))?/);
+  const mon = s.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+  if (!iso) return null;
+  return { y: +iso[1], m: iso[2] ? +iso[2] : mon ? MON.indexOf(mon[1]) + 1 : 1 };
+}
+const monthsAgo = (d: { y: number; m: number }) => (new Date().getFullYear() - d.y) * 12 + (new Date().getMonth() + 1 - d.m);
+const ymLabel = (d: { y: number; m: number }) => `${MON[d.m - 1][0].toUpperCase()}${MON[d.m - 1].slice(1)} ${d.y}`;
+/** Every part of their name appears as a whole word ("Jon Skeet Jr." yes; "jon skeeter", "Jon Skeet's mentor" no). */
+const sameName = (n: string, names: string[]) => names.length > 0 && !/'s\b/i.test(n) && names.every((t) => new RegExp(`\\b${t}\\b`, "i").test(n));
+const nameTokens = (n?: string) => (n ?? "").toLowerCase().replace(/\(.*?\)/g, "").split(/[^a-z]+/).filter((w) => w.length >= 3);
+
+export function checkLinkedIn(input: IdentityRequest, st: Stage, entries: Entry[]): IdentityCheck {
+  const base = { id: "linkedin" as const, label: "LinkedIn profile" };
+  const url = input.linkedinUrl?.trim();
+  const seen = input.linkedin ?? {};
+  if (!url && !Object.values(seen).some(Boolean)) return { ...base, status: "unknown", why: "Add their LinkedIn URL, then open it and fill in what its \"About this profile\" panel shows." };
+  const good: string[] = [], warns: string[] = [], risks: string[] = [];
+  if (url) {
+    const slug = url.match(/linkedin\.com\/in\/([^/?#]+)/i)?.[1];
+    if (!slug) warns.push("the link isn't a personal linkedin.com/in/ profile");
+    else {
+      const names = nameTokens(input.fullName);
+      const words = slug.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3);
+      if (names.length && words.length && !names.some((n) => words.some((w) => w.includes(n) || n.includes(w))))
+        warns.push(`the URL "/in/${slug}" doesn't contain their name`);
+      else if (names.length) good.push("URL matches their name");
+    }
+  }
+  if (seen.verified === "yes") good.push("LinkedIn verification badge");
+  const jobs = entries.filter((e) => !e.edu && !e.partTime);
+  const firstJob = jobs.map((j) => j.start).sort()[0];
+  const careerYrs = Math.max(st.claimedYrs ?? 0, firstJob ? new Date().getFullYear() - firstJob : 0);
+  const joined = parseYm(seen.joined);
+  if (joined) {
+    const ago = monthsAgo(joined);
+    if (ago <= 6 && careerYrs >= 3) risks.push(`joined LinkedIn ${ymLabel(joined)} but claims ${careerYrs}+ years of work`);
+    else if (ago <= 3) warns.push(`LinkedIn account only joined ${ymLabel(joined)}`);
+    else good.push(`on LinkedIn since ${ymLabel(joined)}`);
+  }
+  if (seen.connections === "<50" && (careerYrs >= 3 || jobs.some((j) => j.senior))) warns.push("under 50 connections for someone with a senior career");
+  if (seen.photo === "no") warns.push("no profile photo");
+  if (seen.verified === "no" && (warns.length || risks.length)) warns.push("no verification badge");
+  const status: IdentityStatus = risks.length || warns.length >= 3 ? "risk" : warns.length ? "warn" : good.length ? "ok" : "unknown";
+  const why = [...risks, ...warns].length ? [...risks, ...warns].join("; ") : good.join("; ");
+  return { ...base, status, why: cap(`${why}.`) };
+}
+
+// ---------- Check 8: email ----------
+const SCHOOL_DOMAINS: Record<string, RegExp> = {
+  "ncsu.edu": /nc state|ncsu|north carolina state/i,
+  "charlotte.edu": /unc charlotte|uncc|north carolina at charlotte/i,
+  "uncc.edu": /unc charlotte|uncc|north carolina at charlotte/i,
+  "unc.edu": /unc chapel hill|university of north carolina(?! at)|\bunc\b(?! charlotte)/i,
+  "duke.edu": /duke/i,
+};
+function domainMatchesSchool(domain: string, school: string): boolean {
+  const root = domain.split(".").slice(-2).join(".");
+  if (SCHOOL_DOMAINS[root]) return SCHOOL_DOMAINS[root].test(school);
+  const base = root.split(".")[0];
+  const acronym = school.split(/\s+/).filter((w) => /^[A-Z]/.test(w) && !/^(of|the|at)$/i.test(w)).map((w) => w[0].toLowerCase()).join("");
+  return school.toLowerCase().replace(/\s+/g, "").includes(base) || (acronym.length >= 2 && base.startsWith(acronym));
+}
+
+export function checkEmail(input: IdentityRequest, st: Stage, pf: PresenceFacts): IdentityCheck {
+  const base = { id: "email" as const, label: "Email address" };
+  const e = pf.email;
+  if (!input.email?.includes("@") || !e) return { ...base, status: "unknown", why: "Add their email to check the domain." };
+  if (e.disposable) return { ...base, status: "risk", why: `${e.domain} is a throwaway inbox service.` };
+  if (e.mx === false) return { ...base, status: "risk", why: `${e.domain} can't receive email (no mail server).` };
+  if (e.edu && st.school) {
+    return domainMatchesSchool(e.domain, st.school)
+      ? { ...base, status: "ok", why: `School email at ${e.domain} matches ${shortSchool(st.school)}.` }
+      : { ...base, status: "warn", why: `School email at ${e.domain}, but they say they study at ${shortSchool(st.school)}.` };
+  }
+  if (st.student && !e.edu) return { ...base, status: "ok", why: `Personal email at ${e.domain}; ask for their school email to confirm enrollment.` };
+  return { ...base, status: "ok", why: `${e.domain} is a real mail domain${e.mx === null ? " (couldn't check offline)" : ""}.` };
+}
+
+// ---------- Check 9: other public profiles (Gravatar, website, Stack Overflow) ----------
+export function checkWebPresence(gh: GithubFacts | null, input: IdentityRequest, pf: PresenceFacts): IdentityCheck {
+  const base = { id: "web_presence" as const, label: "Other public profiles" };
+  const good: string[] = [], warns: string[] = [], risks: string[] = [];
+  const names = nameTokens(input.fullName || gh?.name || "");
+  const hasName = (t?: string | null) => !!t && names.length > 0 && names.some((n) => t.toLowerCase().includes(n));
+  const g = pf.gravatar;
+  if (g) {
+    const ghAcct = g.accounts.find((a) => /github/i.test(a.service + a.url));
+    const ghUser = ghAcct?.url.match(/github\.com\/([^/?#]+)/i)?.[1];
+    if (ghUser && gh && ghUser.toLowerCase() !== gh.login.toLowerCase()) risks.push(`their email's Gravatar links a different GitHub (@${ghUser})`);
+    else if (ghUser && gh) good.push("Gravatar links back to this GitHub");
+    if (g.name && names.length && !hasName(g.name)) warns.push(`Gravatar name "${g.name}" doesn't match`);
+    else if (g.name) good.push("Gravatar profile under their name");
+    if (g.location && input.claimedLocation && !placeMatches(input.claimedLocation, g.location)) warns.push(`Gravatar says "${g.location}"`);
+  }
+  const w = pf.website;
+  if (w) {
+    const host = w.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
+    if (!w.ok) warns.push(`personal site ${host} doesn't load`);
+    else {
+      if (hasName(`${w.title ?? ""} ${w.text}`)) good.push(`personal site ${host} names them`);
+      else if (names.length) warns.push(`personal site ${host} never mentions their name`);
+      if (gh && w.links.some((l) => l.toLowerCase().includes(`github.com/${gh.login.toLowerCase()}`))) good.push("site links to this GitHub");
+    }
+    const reg = w.registeredAt ? parseYm(w.registeredAt) : null;
+    if (reg && monthsAgo(reg) <= 2) warns.push(`site's domain was registered ${ymLabel(reg)}`);
+  }
+  const fullMatch = (n: string) => sameName(n, names);
+  const so = (pf.stackoverflow ?? []).filter((u) => fullMatch(u.name));
+  const soLocal = so.find((u) => u.location && input.claimedLocation && placeMatches(input.claimedLocation, u.location));
+  if (soLocal) good.push(`possible Stack Overflow account since ${yearOf(soLocal.createdAt)} with matching name and location`);
+  if (!g && !w && !so.length) return { ...base, status: "unknown", why: "No Gravatar, personal site or Stack Overflow account found for this name or email." };
+  const status: IdentityStatus = risks.length ? "risk" : warns.length >= 2 && !good.length ? "risk" : warns.length ? "warn" : good.length ? "ok" : "unknown";
+  const list = [...risks, ...warns];
+  const why = list.length ? list.join("; ") : good.length ? good.join("; ") : `${so.length} Stack Overflow account${so.length === 1 ? "" : "s"} with this name; none clearly theirs`;
+  return { ...base, status, why: cap(`${why}.`) };
+}
+
+/** The profiles behind check 9, for the recruiter to open. */
+export function publicProfiles(pf: PresenceFacts, input: IdentityRequest): PublicProfile[] {
+  const out: PublicProfile[] = [];
+  const names = nameTokens(input.fullName);
+  if (pf.gravatar) out.push({ site: "Gravatar", url: pf.gravatar.url, title: pf.gravatar.name ?? "Gravatar profile", detail: [pf.gravatar.location, pf.gravatar.accounts.length && `${pf.gravatar.accounts.length} linked account${pf.gravatar.accounts.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ") || "found by their email", confirmed: true });
+  if (pf.website) {
+    const reg = pf.website.registeredAt ? parseYm(pf.website.registeredAt) : null;
+    out.push({ site: "Website", url: pf.website.url, title: pf.website.title ?? pf.website.url, detail: [pf.website.ok ? "loads" : "doesn't load", reg && `domain since ${ymLabel(reg)}`].filter(Boolean).join(" · "), confirmed: true });
+  }
+  (pf.stackoverflow ?? [])
+    .filter((u) => sameName(u.name, names))
+    .slice(0, 3)
+    .forEach((u) => out.push({ site: "Stack Overflow", url: u.url, title: u.name, detail: [`since ${yearOf(u.createdAt)}`, u.location, `${u.reputation.toLocaleString()} rep`].filter(Boolean).join(" · "), confirmed: false }));
+  return out;
+}
+
 // ---------- Candidate story: claims + GitHub evidence on one timeline ----------
 const TECH_ROLE = /engineer|developer|software|programmer|data|machine learning|\bml\b|scientist|intern|devops|sre/i;
 const fmtYm = (iso: string) => iso.slice(0, 7);
 const sortKey = (d: string) => (d === "now" ? 999999 : +d.slice(0, 4) * 100 + (d.length > 4 ? +d.slice(5, 7) : 0));
 
-export function buildStory(gh: GithubFacts | null, text: string, st: Stage, entries: Entry[], checks: IdentityCheck[]): CandidateStory {
+export function buildStory(gh: GithubFacts | null, text: string, st: Stage, entries: Entry[], checks: IdentityCheck[], input: IdentityRequest = {}, pf: PresenceFacts = {}): CandidateStory {
   const flagOf = (id: IdentityCheck["id"]) => {
     const c = checks.find((x) => x.id === id && (x.status === "warn" || x.status === "risk"));
     // One line on the timeline: the first clause of the check's reason
@@ -299,6 +447,12 @@ export function buildStory(gh: GithubFacts | null, text: string, st: Stage, entr
     const parts = c.why.split(/;\s|\.\s/);
     const line = parts[0].length < 30 && parts[1] ? `${parts[0]}: ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}` : parts[0];
     return { status: c.status as "warn" | "risk", why: clip(line.replace(/\.$/, ""), 110) };
+  };
+  // The one clause of a check's reason that's about this timeline event
+  const clauseFlag = (id: IdentityCheck["id"], re: RegExp) => {
+    const c = checks.find((x) => x.id === id && (x.status === "warn" || x.status === "risk"));
+    const clause = c?.why.replace(/\.$/, "").split("; ").find((p) => re.test(p));
+    return c && clause ? { flag: { status: c.status as "warn" | "risk", why: clip(cap(clause), 110) } } : {};
   };
   const tl: CandidateStory["timeline"] = [];
   const own = gh?.repos.filter((r) => !r.fork) ?? [];
@@ -352,15 +506,27 @@ export function buildStory(gh: GithubFacts | null, text: string, st: Stage, entr
     const forks = gh.repos.length - own.length;
     if (forks && !own.length) tl.push({ date: fmtYm(gh.repos[0].createdAt), label: `${forks} forks, no code of their own`, source: "github", flag: { status: "risk", why: "Only forks of other people's projects" } });
   }
+  // LinkedIn (read by the recruiter) and other public profiles
+  const joined = parseYm(input.linkedin?.joined);
+  if (joined) {
+    tl.push({ date: `${joined.y}-${String(joined.m).padStart(2, "0")}`, label: `Joined LinkedIn${input.linkedin?.verified === "yes" ? " (verified badge)" : ""}`, source: "linkedin", ...clauseFlag("linkedin", /joined/i) });
+  }
+  const reg = pf.website?.registeredAt;
+  if (reg) {
+    tl.push({ date: fmtYm(reg), label: `Personal site domain registered (${pf.website!.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]})`, source: "web", ...clauseFlag("web_presence", /registered/i) });
+  }
+  const so = (pf.stackoverflow ?? []).find((u) => u.location && input.claimedLocation && placeMatches(input.claimedLocation, u.location) && nameTokens(input.fullName).some((n) => u.name.toLowerCase().includes(n)));
+  if (so) tl.push({ date: fmtYm(so.createdAt), label: `Possible Stack Overflow account (${so.reputation.toLocaleString()} rep)`, source: "web" });
+
   const copied = flagOf("copied_text");
   if (text.trim()) tl.push({ date: "now", label: "Applies with this LinkedIn / resume text", source: "claimed", ...(copied ? { flag: copied } : {}) });
 
   tl.sort((a, b) => sortKey(a.date) - sortKey(b.date));
-  return { summary: factsSummary(gh, st, entries, checks), summarySource: "facts", timeline: tl };
+  return { summary: factsSummary(gh, st, entries, checks, input), summarySource: "facts", timeline: tl };
 }
 
 /** Deterministic narrative: the facts strung together, no judgement words. */
-export function factsSummary(gh: GithubFacts | null, st: Stage, entries: Entry[], checks: IdentityCheck[]): string {
+export function factsSummary(gh: GithubFacts | null, st: Stage, entries: Entry[], checks: IdentityCheck[], input: IdentityRequest = {}): string {
   const out: string[] = [];
   const job = entries.filter((e) => !e.edu).sort((a, b) => b.start - a.start)[0];
   if (st.student) out.push(`Says they're a student${st.school ? ` at ${shortSchool(st.school)}` : ""}${st.studyStart ? ` since ${st.studyStart}` : ""}${st.gradYear ? `, graduating ${st.gradYear}` : ""}.`);
@@ -375,6 +541,8 @@ export function factsSummary(gh: GithubFacts | null, st: Stage, entries: Entry[]
     const recent = own.filter((r) => r.description).sort((a, b) => b.pushedAt.localeCompare(a.pushedAt)).slice(0, 2).map((r) => r.name);
     if (recent.length) out.push(`Recent work: ${recent.join(", ")}.`);
   } else out.push("No GitHub account to compare against yet.");
+  const joined = parseYm(input.linkedin?.joined);
+  if (joined) out.push(`On LinkedIn since ${ymLabel(joined)}${input.linkedin?.verified === "yes" ? " with a verification badge" : ""}.`);
   const off = checks.filter((c) => c.status === "warn" || c.status === "risk").map((c) => c.label.toLowerCase());
   out.push(off.length ? `Worth asking about: ${off.join(", ")}.` : "Claims and GitHub line up so far.");
   return out.join(" ");
@@ -399,12 +567,18 @@ export function verifyQuestions(checks: IdentityCheck[], gh: GithubFacts | null,
     const line = repeatedLines(text)[0] ?? text.split(/(?<=[.!?])\s+/).find((s) => BUZZ.some((b) => s.toLowerCase().includes(b)));
     if (line) out.push(`Your profile says "${clip(line.trim().replace(/[.!?]$/, ""), 90)}". Tell me about one specific day when that happened.`);
   }
+  if (off("linkedin")) {
+    const j = parseYm(input.linkedin?.joined);
+    out.push(j ? `Your LinkedIn starts in ${ymLabel(j)}. Where did you keep your work history before that?` : "Can you share your screen and open your LinkedIn profile for a second?");
+  }
+  if (off("email")) out.push("What's your school or work email? I'll send the next steps there.");
+  if (off("web_presence")) out.push("Tell me about your personal site: what did you build it with, and when did you put it up?");
   if (off("activity")) out.push("Most of your repos are new. What were you coding before this, and where does that code live?");
   // Always enough to verify identity even when nothing was found
   out.push(`Which professor did you have for data structures${school}, and what were their exams like?`);
   out.push(`What's the building where most of your CS classes are${school}, and what's nearby to eat?`);
   out.push("Who's someone you've built a project with, and what did they think of your code?");
-  return [...new Set(out)].slice(0, 5);
+  return [...new Set(out)].slice(0, 6);
 }
 
 const shortSchool = (s: string) => s.replace(/,?\s*(b\.?s\.?|b\.?a\.?|bachelor|master|m\.?s\.?).*/i, "").replace(/\s*·.*/, "").trim();
@@ -417,7 +591,7 @@ const cap = (s: string) => {
 // ---------- Putting it together ----------
 const WEIGHT: Record<IdentityStatus, number> = { risk: 30, warn: 12, ok: 0, unknown: 0 };
 
-export function buildIdentityReport(gh: GithubFacts | null, input: IdentityRequest, rating: TextRating | null, sources: Pick<IdentityReport, "githubSource" | "textSource" | "matches">): IdentityReport {
+export function buildIdentityReport(gh: GithubFacts | null, input: IdentityRequest, rating: TextRating | null, sources: Pick<IdentityReport, "githubSource" | "textSource" | "matches" | "presenceSource">, pf: PresenceFacts = {}): IdentityReport {
   const text = input.pastedText ?? "";
   const entries = parseEntries(text);
   const st = careerStage(text, input, entries);
@@ -428,6 +602,9 @@ export function buildIdentityReport(gh: GithubFacts | null, input: IdentityReque
     checkSkills(gh, text),
     checkCopiedText(text, rating),
     checkActivity(gh),
+    checkLinkedIn(input, st, entries),
+    checkEmail(input, st, pf),
+    checkWebPresence(gh, input, pf),
   ];
   const score = Math.min(100, checks.reduce((a, c) => a + WEIGHT[c.status], 0));
   const risks = checks.filter((c) => c.status === "risk").length;
@@ -437,8 +614,8 @@ export function buildIdentityReport(gh: GithubFacts | null, input: IdentityReque
   const headline = !known
     ? "Not enough to check yet"
     : { consistent: "Profile looks consistent", mixed: "A few things don't line up", inconsistent: "Strong signs this profile isn't theirs" }[level];
-  const story = buildStory(gh, text, st, entries, checks);
-  return { score, level, headline, checks, questions: verifyQuestions(checks, gh, st, input, text), story, ...sources };
+  const story = buildStory(gh, text, st, entries, checks, input, pf);
+  return { score, level, headline, checks, questions: verifyQuestions(checks, gh, st, input, text), story, profiles: publicProfiles(pf, input), ...sources };
 }
 
 /** Fixture GitHub facts → the profile card's shape, so demo candidates work offline. */

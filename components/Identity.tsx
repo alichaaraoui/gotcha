@@ -5,11 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { openDocked } from "@/components/LinkedInButton";
 import demo from "@/data/fixtures/identity_demo.json";
-import type { CandidateStory, IdentityReport, IdentityRequest, IdentityStatus, Question } from "@/lib/types";
+import type { CandidateStory, IdentityReport, IdentityRequest, IdentityStatus, LinkedInSeen, Question } from "@/lib/types";
 
 const KEY = "gotcha.identityInput";
 
-export function useIdentity(login: string) {
+export function useIdentity(login: string, linkedinUrl = "") {
   const { session, update, addQuestions } = useStore();
   const [input, setInputState] = useState<IdentityRequest>(() => {
     try {
@@ -31,7 +31,7 @@ export function useIdentity(login: string) {
   async function run(forLogin = login) {
     setLoading(true);
     try {
-      const r: IdentityReport = await fetch("/api/identity", { method: "POST", body: JSON.stringify({ ...input, login: forLogin.trim() || undefined }) }).then((x) => x.json());
+      const r: IdentityReport = await fetch("/api/identity", { method: "POST", body: JSON.stringify({ ...input, linkedinUrl: linkedinUrl.trim() || input.linkedinUrl, login: forLogin.trim() || undefined }) }).then((x) => x.json());
       update((s) => ({ ...s, identity: r }));
     } catch {
       // Leave the last report; the card says nothing ran
@@ -97,7 +97,7 @@ export function splitSections(text: string): Sections {
 const joinSections = (s: Sections) =>
   SECTIONS.filter((x) => s[x.key].trim()).map((x) => `${x.key === "other" ? "Skills" : x.label}\n${s[x.key]}`).join("\n\n");
 
-export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (login: string) => void }) {
+export function IdentityInputs({ id, linkedinUrl, onDemo }: { id: IdentityState; linkedinUrl: string; onDemo: (login: string, linkedinUrl?: string) => void }) {
   const { input, setInput } = id;
   const [open, setOpen] = useState(false); // closed until the recruiter opens it
   const [tab, setTab] = useState<SectionKey>("about");
@@ -111,10 +111,11 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
   const filled = SECTIONS.filter((x) => sections[x.key].trim()).length;
   const current = SECTIONS.find((x) => x.key === tab)!;
 
-  const fill = (d: { input: IdentityRequest; github: { login: string } }) => {
-    setInput({ ...d.input, login: undefined });
-    setSections(splitSections(d.input.pastedText ?? ""));
-    onDemo(d.github.login);
+  const fill = (d: { input: unknown; github: { login: string } }) => {
+    const di = d.input as IdentityRequest;
+    setInput({ ...di, login: undefined });
+    setSections(splitSections(di.pastedText ?? ""));
+    onDemo(d.github.login, di.linkedinUrl);
     setOpen(true);
     setTab("about");
   };
@@ -128,7 +129,7 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
   }
   const clear = () => {
     setSections(splitSections(""));
-    setInput({ pastedText: "", fullName: "", email: "", claimedLocation: "", claimedSchool: "", gradYear: undefined });
+    setInput({ pastedText: "", fullName: "", email: "", claimedLocation: "", claimedSchool: "", gradYear: undefined, website: "", linkedin: {} });
   };
 
   return (
@@ -200,8 +201,10 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
             <Field label="Grad year" placeholder="2027" value={input.gradYear ? String(input.gradYear) : ""} onChange={(v) => setInput({ gradYear: +v.replace(/\D/g, "").slice(0, 4) || undefined })} numeric />
           </div>
 
+          <PresenceInputs input={input} setInput={setInput} linkedinUrl={linkedinUrl} />
+
           <div className="flex flex-wrap items-center gap-3">
-            <button className="btn-ghost px-5" onClick={() => id.run()} disabled={id.loading || (!filled && !input.fullName && !input.email)}>
+            <button className="btn-ghost px-5" onClick={() => id.run()} disabled={id.loading || (!filled && !input.fullName && !input.email && !linkedinUrl && !input.website)}>
               {id.loading ? "Checking…" : "Check identity"}
             </button>
             <span className="text-xs text-white/45">No GitHub username above? We&apos;ll search GitHub by name and email for you to confirm.</span>
@@ -209,6 +212,53 @@ export function IdentityInputs({ id, onDemo }: { id: IdentityState; onDemo: (log
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------- Public presence: LinkedIn as the recruiter sees it + personal site ----------
+function Toggle<T extends string>({ label, value, options, onChange }: { label: string; value?: T; options: { v: T; label: string }[]; onChange: (v: T | undefined) => void }) {
+  return (
+    <div className="space-y-1">
+      <span className="block px-1 text-xs text-white/50">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.v}
+            aria-pressed={value === o.v}
+            onClick={() => onChange(value === o.v ? undefined : o.v)}
+            className={`rounded-full px-3 py-1.5 text-xs transition ${value === o.v ? "bg-white text-black" : "border border-white/15 text-white/75 hover:bg-white/10"}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PresenceInputs({ input, setInput, linkedinUrl }: { input: IdentityRequest; setInput: (p: Partial<IdentityRequest>) => void; linkedinUrl: string }) {
+  const seen = input.linkedin ?? {};
+  const setSeen = (p: Partial<LinkedInSeen>) => setInput({ linkedin: { ...seen, ...p } });
+  return (
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="label">Public presence</div>
+          <p className="mt-0.5 text-xs text-white/50">From their email and site we also check Gravatar, the site and its domain age, and Stack Overflow. LinkedIn you read yourself: open it, then ··· More → About this profile.</p>
+        </div>
+        <button className="chip hover:bg-white/15 disabled:opacity-40" disabled={!linkedinUrl} onClick={() => openDocked(linkedinUrl)} title={linkedinUrl ? "" : "Add their LinkedIn URL above"}>Open LinkedIn ↗</button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Toggle label="LinkedIn verification badge" value={seen.verified} options={[{ v: "yes", label: "Verified" }, { v: "no", label: "Not verified" }]} onChange={(v) => setSeen({ verified: v })} />
+        <label className="space-y-1">
+          <span className="block px-1 text-xs text-white/50">Joined LinkedIn (About this profile)</span>
+          <input type="month" className="input [color-scheme:dark]" value={seen.joined ?? ""} onChange={(e) => setSeen({ joined: e.target.value || undefined })} />
+        </label>
+        <Toggle label="Connections" value={seen.connections} options={[{ v: "<50", label: "Under 50" }, { v: "50-499", label: "50–499" }, { v: "500+", label: "500+" }]} onChange={(v) => setSeen({ connections: v })} />
+        <Toggle label="Profile photo" value={seen.photo} options={[{ v: "yes", label: "Has photo" }, { v: "no", label: "No photo" }]} onChange={(v) => setSeen({ photo: v })} />
+      </div>
+      <Field label="Personal website (optional, else the one on their GitHub)" placeholder="https://their-site.dev" value={input.website} onChange={(v) => setInput({ website: v })} />
     </div>
   );
 }
@@ -226,6 +276,8 @@ function Field({ label, value, onChange, placeholder, className = "", numeric }:
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const fmtDate = (d: string) => (d === "now" ? "Now" : d.length > 4 ? `${MONTHS[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : d);
 
+const SOURCE_LABEL: Record<CandidateStory["timeline"][number]["source"], string> = { claimed: "Claimed", github: "GitHub", linkedin: "LinkedIn", web: "Web" };
+
 function StoryView({ story }: { story: CandidateStory }) {
   return (
     <div className="space-y-3">
@@ -234,11 +286,11 @@ function StoryView({ story }: { story: CandidateStory }) {
       <ol className="relative ml-1.5 space-y-2.5 border-l border-white/15 pl-4">
         {story.timeline.map((e, i) => (
           <li key={i} className="relative text-sm">
-            <span className={`absolute -left-[21px] top-1.5 h-2 w-2 rounded-full ${e.flag ? (e.flag.status === "risk" ? "bg-flag" : "bg-watch") : e.source === "github" ? "bg-white/70" : "bg-white/30 ring-1 ring-white/50"}`} />
+            <span className={`absolute -left-[21px] top-1.5 h-2 w-2 rounded-full ${e.flag ? (e.flag.status === "risk" ? "bg-flag" : "bg-watch") : e.source === "claimed" ? "bg-white/30 ring-1 ring-white/50" : "bg-white/70"}`} />
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span className="w-16 shrink-0 text-xs text-white/45">{fmtDate(e.date)}</span>
               <span className="min-w-0 flex-1 text-white/85">{e.label}</span>
-              <span className="text-[10px] uppercase tracking-wider text-white/35">{e.source === "github" ? "GitHub" : "Claimed"}</span>
+              <span className="text-[10px] uppercase tracking-wider text-white/35">{SOURCE_LABEL[e.source]}</span>
             </div>
             {e.flag && (
               <div className={`mt-0.5 pl-[72px] text-xs ${e.flag.status === "risk" ? "text-flag" : "text-watch"}`}>
@@ -248,7 +300,7 @@ function StoryView({ story }: { story: CandidateStory }) {
           </li>
         ))}
       </ol>
-      <p className="text-[11px] text-white/35">Filled dots: GitHub evidence · hollow: what they claim. Story {story.summarySource === "groq" ? "written by AI from these facts" : "strung from the facts"}.</p>
+      <p className="text-[11px] text-white/35">Filled dots: evidence (GitHub, LinkedIn, web) · hollow: what they claim. Story {story.summarySource === "groq" ? "written by AI from these facts" : "strung from the facts"}.</p>
     </div>
   );
 }
@@ -310,6 +362,22 @@ export function IdentityCard({ id, onPick }: { id: IdentityState; onPick: (login
         </div>
       )}
 
+      {!!r.profiles?.length && (
+        <div className="space-y-2">
+          <div className="label">Found on the web · open to confirm</div>
+          {r.profiles.map((pr) => (
+            <div key={pr.url} className="flex items-center gap-2 rounded-2xl bg-white/[0.05] p-2 text-xs">
+              <span className="chip shrink-0 py-0.5 text-[10px]">{pr.site}</span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm">{pr.title}</div>
+                <div className="truncate text-white/45">{pr.detail}{!pr.confirmed && " · possible match, confirm"}</div>
+              </div>
+              <button className="chip shrink-0 hover:bg-white/15" onClick={() => openDocked(pr.url)}>Open ↗</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="label">Questions to verify identity</div>
@@ -327,7 +395,7 @@ export function IdentityCard({ id, onPick }: { id: IdentityState; onPick: (login
           })}
         </ol>
       </div>
-      <p className="text-[11px] text-white/35">GitHub: {r.githubSource} · wording: {r.textSource === "groq" ? "AI read" : r.textSource}. Suggestions only; you decide.</p>
+      <p className="text-[11px] text-white/35">GitHub: {r.githubSource} · other profiles: {r.presenceSource ?? "none"} · wording: {r.textSource === "groq" ? "AI read" : r.textSource}. Suggestions only; you decide.</p>
     </div>
   );
 }

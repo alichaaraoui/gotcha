@@ -8,7 +8,7 @@
       "createdAt": "2022-08-10T14:02:00Z",
       "location": "Charlotte, NC",
       "company": null,
-      "blog": null,
+      "blog": "https://jordanreyes.dev",
       "bio": "CS student at UNC Charlotte. Backend + infra.",
       "publicRepos": 18,
       "repos": [
@@ -226,11 +226,59 @@
     },
     "input": {
       "fullName": "Jordan Reyes",
-      "email": "jordan.reyes@example.edu",
+      "email": "jordan.reyes@charlotte.edu",
       "claimedLocation": "Charlotte, NC",
       "claimedSchool": "UNC Charlotte",
       "gradYear": 2027,
-      "pastedText": "About\nCS senior at UNC Charlotte. I like the boring parts of backend work: rate limits, retries, logs that actually help at 2am. Most of what I've built lives on my GitHub.\n\nExperience\nSoftware Engineering Intern \u00b7 Queen City Freight (fictional)\nJun 2025 - Aug 2025\nRewrote the shipment-status endpoint in Flask and put a Redis token bucket in front of it after a partner hammered us with retries. p95 went from 1.8s to 300ms.\n\nTeaching Assistant, ITSC 2214 Data Structures \u00b7 UNC Charlotte\nJan 2025 - May 2025\nRan two lab sections a week and wrote the autograder tests for the linked list and hash map assignments.\n\nEducation\nUniversity of North Carolina at Charlotte, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Flask, Redis, Postgres, TypeScript, Next.js, Go, Docker"
+      "pastedText": "About\nCS senior at UNC Charlotte. I like the boring parts of backend work: rate limits, retries, logs that actually help at 2am. Most of what I've built lives on my GitHub.\n\nExperience\nSoftware Engineering Intern \u00b7 Queen City Freight (fictional)\nJun 2025 - Aug 2025\nRewrote the shipment-status endpoint in Flask and put a Redis token bucket in front of it after a partner hammered us with retries. p95 went from 1.8s to 300ms.\n\nTeaching Assistant, ITSC 2214 Data Structures \u00b7 UNC Charlotte\nJan 2025 - May 2025\nRan two lab sections a week and wrote the autograder tests for the linked list and hash map assignments.\n\nEducation\nUniversity of North Carolina at Charlotte, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Flask, Redis, Postgres, TypeScript, Next.js, Go, Docker",
+      "linkedinUrl": "https://www.linkedin.com/in/jordan-reyes-dev",
+      "website": "https://jordanreyes.dev",
+      "linkedin": {
+        "verified": "yes",
+        "joined": "2022-09",
+        "connections": "50-499",
+        "photo": "yes"
+      }
+    },
+    "presence": {
+      "email": {
+        "domain": "charlotte.edu",
+        "edu": true,
+        "disposable": false,
+        "mx": true
+      },
+      "gravatar": {
+        "url": "https://gravatar.com/jordanreyesdev",
+        "name": "Jordan Reyes",
+        "location": "Charlotte, NC",
+        "accounts": [
+          {
+            "service": "github",
+            "url": "https://github.com/demo-candidate"
+          }
+        ]
+      },
+      "website": {
+        "url": "https://jordanreyes.dev",
+        "ok": true,
+        "title": "Jordan Reyes \u00b7 backend notes",
+        "text": "Jordan Reyes. CS at UNC Charlotte. Notes on rate limiting, Redis and log shipping.",
+        "links": [
+          "https://github.com/demo-candidate",
+          "https://www.linkedin.com/in/jordan-reyes-dev"
+        ],
+        "registeredAt": "2023-04-02T00:00:00Z",
+        "platform": false
+      },
+      "stackoverflow": [
+        {
+          "name": "Jordan Reyes",
+          "url": "https://stackoverflow.com/users/0/jordan-reyes",
+          "location": "Charlotte, NC",
+          "createdAt": "2023-09-12T00:00:00Z",
+          "reputation": 412
+        }
+      ]
     }
   },
   "suspicious": {
@@ -242,7 +290,7 @@
       "createdAt": "2008-03-14T09:30:00Z",
       "location": "Austin, TX",
       "company": "@BrightwaveConsulting",
-      "blog": null,
+      "blog": "https://ethanbrooks-portfolio.com",
       "bio": "Senior full-stack engineer | 12+ years",
       "publicRepos": 9,
       "repos": [
@@ -460,11 +508,38 @@
     },
     "input": {
       "fullName": "Ethan Brooks",
-      "email": "ethan.brooks@example.com",
+      "email": "ethan.brooks.dev@mailinator.com",
       "claimedLocation": "Raleigh, NC",
       "claimedSchool": "NC State",
       "gradYear": 2027,
-      "pastedText": "About\nResults-driven and passionate Software Engineer with a proven track record of leveraging cutting-edge technologies to deliver scalable, robust solutions in fast-paced, dynamic environments. Current student at NC State, class of 2027. 8+ years of experience.\n\nExperience\nSenior Software Engineer \u00b7 Nimbus Data Systems (fictional)\nJan 2019 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Collaborated with cross-functional teams to deliver high-impact solutions.\n\nMachine Learning Engineer \u00b7 Arclight AI (fictional)\nMar 2020 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Leveraged TensorFlow and PyTorch to drive data-driven insights for key stakeholders.\n\nEducation\nNorth Carolina State University, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Java, Kubernetes, Kafka, Rust, TensorFlow, PyTorch, AWS, React, GraphQL"
+      "pastedText": "About\nResults-driven and passionate Software Engineer with a proven track record of leveraging cutting-edge technologies to deliver scalable, robust solutions in fast-paced, dynamic environments. Current student at NC State, class of 2027. 8+ years of experience.\n\nExperience\nSenior Software Engineer \u00b7 Nimbus Data Systems (fictional)\nJan 2019 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Collaborated with cross-functional teams to deliver high-impact solutions.\n\nMachine Learning Engineer \u00b7 Arclight AI (fictional)\nMar 2020 - Present\nSpearheaded the design of scalable microservices using Kubernetes, Kafka and Rust. Leveraged TensorFlow and PyTorch to drive data-driven insights for key stakeholders.\n\nEducation\nNorth Carolina State University, B.S. Computer Science\n2023 - 2027\n\nSkills\nPython, Java, Kubernetes, Kafka, Rust, TensorFlow, PyTorch, AWS, React, GraphQL",
+      "linkedinUrl": "https://www.linkedin.com/in/senior-fullstack-ai-engineer-7781",
+      "website": "https://ethanbrooks-portfolio.com",
+      "linkedin": {
+        "verified": "no",
+        "joined": "2026-09",
+        "connections": "<50",
+        "photo": "no"
+      }
+    },
+    "presence": {
+      "email": {
+        "domain": "mailinator.com",
+        "edu": false,
+        "disposable": true,
+        "mx": true
+      },
+      "gravatar": null,
+      "website": {
+        "url": "https://ethanbrooks-portfolio.com",
+        "ok": true,
+        "title": "Portfolio | Senior Engineer",
+        "text": "Senior Full-Stack Engineer. Scalable solutions. Contact me.",
+        "links": [],
+        "registeredAt": "2026-10-01T00:00:00Z",
+        "platform": false
+      },
+      "stackoverflow": []
     }
   }
 }

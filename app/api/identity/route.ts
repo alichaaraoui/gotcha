@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { groqJson } from "@/lib/groq";
 import { buildIdentityReport, type TextRating } from "@/lib/identity";
 import { getFacts, searchMatches } from "@/lib/identityGithub";
+import { getPresence } from "@/lib/presence";
 import type { GithubMatch, IdentityRequest } from "@/lib/types";
 
 const SYSTEM = `You review a job candidate's pasted LinkedIn/resume text for a recruiter.
@@ -11,8 +12,8 @@ Flag at most 3 lines that look copied or templated: identical phrasing across ro
 Reply as JSON: {"score": number, "lines": [{"text": "<exact line, max 100 chars>", "why": "<max 8 words>"}]}`;
 
 const STORY = `You help a recruiter read who a job candidate is at a glance.
-From the facts given (their own claims + public GitHub evidence + checks), write 3-4 short plain sentences (70 words max):
-who they say they are, what their GitHub shows (since when, main languages, recent work), and how that fits the role.
+From the facts given (their own claims + public evidence from GitHub, LinkedIn and the web + checks), write 3-4 short plain sentences (70 words max):
+who they say they are, what their public presence shows (GitHub since when, main languages, recent work; LinkedIn and other profiles if given), and how that fits the role.
 If some checks are warn or risk, end with one neutral sentence on what is worth asking about; if all are ok, say the story holds together.
 Never accuse, never guess motives, never use the word "cheater". Use only the facts given.
 Reply as JSON: {"summary": "<3-4 sentences>"}`;
@@ -28,6 +29,9 @@ export async function POST(req: Request) {
     login ? Promise.resolve<GithubMatch[]>([]) : searchMatches(body.email, body.fullName, body.claimedLocation),
   ]);
 
+  // Public presence beyond GitHub (email, Gravatar, personal site + domain age, Stack Overflow)
+  const presence = await getPresence(body, login, gh.facts?.blog ?? null);
+
   const clean: TextRating | null = rating && typeof rating.score === "number"
     ? { score: Math.max(0, Math.min(1, rating.score)), lines: Array.isArray(rating.lines) ? rating.lines.filter((l) => l?.text) : [] }
     : null;
@@ -36,13 +40,14 @@ export async function POST(req: Request) {
     githubSource: gh.source,
     textSource: clean ? "groq" : text ? "heuristic" : "none",
     matches: login ? undefined : matches,
-  });
+    presenceSource: presence.source,
+  }, presence.facts);
 
   // Narrative from the merged facts; the deterministic summary stays if Groq is off or slow
   if (gh.facts || text) {
     const facts = {
       claims: report.story.timeline.filter((e) => e.source === "claimed").map((e) => `${e.date}: ${e.label}`),
-      github: report.story.timeline.filter((e) => e.source === "github").map((e) => `${e.date}: ${e.label}`),
+      evidence: report.story.timeline.filter((e) => e.source !== "claimed").map((e) => `${e.date} (${e.source}): ${e.label}`),
       checks: report.checks.filter((c) => c.status !== "unknown").map((c) => `${c.label}: ${c.status} (${c.why})`),
       draft: report.story.summary,
     };

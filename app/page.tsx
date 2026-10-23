@@ -19,7 +19,7 @@ export default function Setup() {
   const [error, setError] = useState("");
   const [qSource, setQSource] = useState<string>();
   const p = session.profile;
-  const identity = useIdentity(login);
+  const identity = useIdentity(login, linkedin);
 
   async function lookup() {
     setLoading(true);
@@ -61,7 +61,7 @@ export default function Setup() {
             <span className="label">LinkedIn URL (optional)</span>
             <input className="input" placeholder="https://www.linkedin.com/in/…" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} />
           </label>
-          <IdentityInputs id={identity} onDemo={setLogin} />
+          <IdentityInputs id={identity} linkedinUrl={linkedin} onDemo={(l, li) => { setLogin(l); setLinkedin(li ?? ""); }} />
           <div className="space-y-1.5">
             <span className="label">Line of questioning</span>
             <div className="flex flex-wrap gap-2">

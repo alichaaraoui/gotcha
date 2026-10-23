@@ -250,7 +250,7 @@ export interface ScoreRequest {
 export type IdentityStatus = "ok" | "warn" | "risk" | "unknown";
 
 export interface IdentityCheck {
-  id: "timeline_account" | "timeline_resume" | "location" | "skills" | "copied_text" | "activity";
+  id: "timeline_account" | "timeline_resume" | "location" | "skills" | "copied_text" | "activity" | "linkedin" | "email" | "web_presence";
   label: string;
   status: IdentityStatus;
   why: string; // plain English
@@ -265,6 +265,26 @@ export interface IdentityRequest {
   claimedLocation?: string;
   claimedSchool?: string;
   gradYear?: number;
+  linkedinUrl?: string;
+  website?: string; // personal site; falls back to the blog field on their GitHub
+  linkedin?: LinkedInSeen; // what the recruiter sees on the LinkedIn page (view only, never scraped)
+}
+
+/** Read off LinkedIn's own page by the recruiter, incl. its "About this profile" panel. */
+export interface LinkedInSeen {
+  verified?: "yes" | "no"; // LinkedIn verification badge (ID, workplace or school)
+  joined?: string; // "2022-09" (About this profile → Joined)
+  connections?: "<50" | "50-499" | "500+";
+  photo?: "yes" | "no";
+}
+
+/** Another public profile that may be theirs (Gravatar, personal site, Stack Overflow). Shown for the recruiter to confirm. */
+export interface PublicProfile {
+  site: "Gravatar" | "Website" | "Stack Overflow";
+  url: string;
+  title: string;
+  detail: string; // e.g. "since 2019 · Charlotte, NC · 412 rep"
+  confirmed: boolean; // false = found by name search, possibly someone else
 }
 
 /** A GitHub account that might be theirs. Shown for the recruiter to confirm, never linked automatically. */
@@ -288,6 +308,8 @@ export interface IdentityReport {
   githubSource: "live" | "cache" | "fixture" | "none";
   textSource: "groq" | "heuristic" | "none";
   story: CandidateStory;
+  profiles?: PublicProfile[];
+  presenceSource?: "live" | "cache" | "fixture" | "none";
 }
 
 /** Who this person is at a glance: claims merged with GitHub evidence, flags where the story breaks. */
@@ -300,6 +322,6 @@ export interface CandidateStory {
 export interface StoryEvent {
   date: string; // "2008-03", "2023", or "now"
   label: string;
-  source: "claimed" | "github";
+  source: "claimed" | "github" | "linkedin" | "web";
   flag?: { status: "warn" | "risk"; why: string };
 }
