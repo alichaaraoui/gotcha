@@ -2,18 +2,24 @@
 // Once per browser session; a tiny inline script in the layout hides it before paint on repeat loads.
 // OWNER: Person 1
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const SPLASH_KEY = "gotcha.splash";
 
 export function Splash() {
   const [gone, setGone] = useState(false);
+  const seen = useRef<boolean | null>(null); // decided once, even when dev mode runs effects twice
 
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(SPLASH_KEY)) return setGone(true); // already seen this session
-      sessionStorage.setItem(SPLASH_KEY, "1");
-    } catch {}
+    if (seen.current === null) {
+      try {
+        seen.current = !!sessionStorage.getItem(SPLASH_KEY);
+        sessionStorage.setItem(SPLASH_KEY, "1");
+      } catch {
+        seen.current = false;
+      }
+    }
+    if (seen.current) return setGone(true); // already seen this session
     const t = setTimeout(() => setGone(true), 2200); // after the CSS fade-out finishes
     return () => clearTimeout(t);
   }, []);
